@@ -1,0 +1,7 @@
+#action {^CHARNAME: %1.$} {
+	#format {tmpTimeStamp} {%t} {%Y-%m-%d_%H_%M_%S};
+	#log {append} {logs/${tmpTimeStamp}_%1.log};
+	#system {ln -fs logs/${tmpTimeStamp}_%1.log most_recent.log};
+	#unvar {tmpTimeStamp};
+	#line gag
+}

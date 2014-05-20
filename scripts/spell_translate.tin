@@ -1,0 +1,80 @@
+#sub {^%1 begins some strange incantations...$} {%1 is casting!}
+
+#var spells[abrawajf] {armour}
+#var spells[bfzahp ay bfugtizgg] {breath of briskness}
+#var spells[bfzat eaaf] {break door}
+#var spells[braqt bfzahp] {black breath}
+#var spells[braqt eaaf] {block door}
+#var spells[qarr yawuruabra] {call familiar}
+#var spells[canduswazz judifgz] {remove curse}
+#var spells[canduswazz saugai] {remove poison}
+#var spells[diesilla barh] {lightning bolt}
+#var spells[eabratizgg] {darkness}
+#var spells[eugszr waouq] {dispel magic}
+#var spells[eugszr zzur] {dispel evil}
+#var spells[euzuiahuai] {divination}
+#var spells[fido] {bless}
+#var spells[gaiqhjabral] {sanctuary}
+#var spells[ghafz] {store}
+#var spells[ghcandusiohp] {strength}
+#var spells[gjwwai] {summon}
+#var spells[gpaqtuio ofags] {shocking grasp}
+#var spells[gpfaje] {shroud}
+#var spells[gpuzre] {shield}
+#var spells[gqfl] {scry}
+#var spells[gruugz oculoae] {raise dead}
+#var spells[grzzs] {sleep}
+#var spells[gunsogz ruyz] {sense life}
+#var spells[gurunsoqz] {silence}
+#var spells[hgruigyzf] {transfer}
+#var spells[hiqahz] {locate}
+#var spells[hiqahz ruyz] {locate life}
+#var spells[hiqahz waouq] {locate magic}
+#var spells[hzrzsafh] {teleport}
+#var spells[iuoph zuguai] {night vision}
+#var spells[judicandus dies] {cure light}
+#var spells[judicandus gzfuajg] {cure serious}
+#var spells[judicandus noselacri] {cure blindness}
+#var spells[judicandus qfuhuq] {cure critic}
+#var spells[judifgz] {curse}
+#var spells[mosailla paieg] {burning hands}
+#var spells[noselacri] {blindness}
+#var spells[oculoinfra saugai] {detect poison}
+#var spells[oculoinfra uizuguburuhl] {detect invisibility}
+#var spells[oculoinfra waouq] {detect magic}
+#var spells[oculoinfra zzur] {detect evil}
+#var spells[pabraw] {harm}
+#var spells[pare] {hold}
+#var spells[pzar] {heal}
+#var spells[qahijf gsfal] {colour spray}
+#var spells[qaihfar xzahpzf] {control weather}
+#var spells[qarr diesilla] {call lightning}
+#var spells[qfzahz dies] {create light}
+#var spells[qfzahz xahzf] {create water}
+#var spells[qfzahz yaae] {create food}
+#var spells[qpabraw] {charm}
+#var spells[qpurr hajqp] {chill touch}
+#var spells[safhar] {portal}
+#var spells[saugai] {poison}
+#var spells[sfahzqhuai yfaw zzur] {protection from evil}
+#var spells[unsoqpaih] {enchant}
+#var spells[unsozfol efaui] {energy drain}
+#var spells[uoculoihuyl] {identify}
+#var spells[waouq bragh] {magic blast}
+#var spells[waouq wuggurz] {magic missile}
+#var spells[xafe ay candusqarr] {word of recall}
+#var spells[xahqp faaw] {watch room}
+#var spells[yufzbarr] {fireball}
+#var spells[yuie hpz sahp] {find the path}
+#var spells[yzabra] {fear}
+#var spells[zabrahpdjatz] {earthquake}
+
+#action {^%1 utters the {word|words} '%2'$} {
+	#if {&spells[%2]} {
+		#echo {%1 casts $spells[%2]!}
+	};
+	#else {
+		#echo {%1 casts %2!}
+	};
+	#line gag
+}

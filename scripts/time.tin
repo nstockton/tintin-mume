@@ -1,0 +1,199 @@
+#alias {_time_check} {
+	#if {"$current_month" == "0"} {#var {current_month} {1}};
+	#if {$current_hour < $months[$current_month][dawn]} {
+		#var {current_state} {NIGHT};
+		#var {next_state} {DAY};
+		#math {till_next_state} {$months[$current_month][dawn] - $current_hour + 1}
+	};
+	#elseif {$current_hour >= $months[$current_month][dusk]} {
+		#var {current_state} {NIGHT};
+		#var {next_state} {DAY};
+		#math {till_next_state} {25 + $months[$current_month][dawn] - $current_hour}
+	};
+	#elseif {($current_hour > $months[$current_month][dawn]) && ($current_hour < $months[$current_month][dusk])} {
+		#var {current_state} {DAY};
+		#var {next_state} {NIGHT};
+		#math {till_next_state} {$months[$current_month][dusk] - $current_hour}
+	};
+	#elseif {$current_hour == $months[$current_month][dawn]} {
+		#var {current_state} {DAWN};
+		#var {next_state} {DAY};
+		#var {till_next_state} {1}
+	};
+	#if {"$difference" == "0"} {
+		#if {$current_hour < 12} {#var {current_time} {$current_hour am}};
+		#elseif {($current_hour > 12) && ($current_hour < 24)} {
+			#math {current_time} {$current_hour - 12};
+			#var {current_time} {$current_time pm}
+		};
+		#elseif {"$current_hour" == "12"} {#var {current_time} {12 pm}};
+		#else {#var {current_time} {12 am}}
+	};
+	#else {
+		#math {tmpDiffSeconds} {((@_timer{} - $difference) / 1000) % 60};
+		#if {$tmpDiffSeconds < 10} {#var {tmpDiffSecondsPretty} {0}};
+		#else {#var {tmpDiffSecondsPretty} {}};
+		#if {$current_hour < 12} {#var {current_time} {${current_hour}:${tmpDiffSecondsPretty}${tmpDiffSeconds} am}};
+		#elseif {($current_hour > 12) && ($current_hour < 24)} {
+			#math {current_time} {$current_hour - 12};
+			#var {current_time} {${current_time}:${tmpDiffSecondsPretty}${tmpDiffSeconds} pm}
+		};
+		#elseif {"$current_hour" == "12"} {#var {current_time} {${current_hour}:${tmpDiffSecondsPretty}${tmpDiffSeconds} pm}};
+		#else {
+			#math {current_time} {$current_hour - 12};
+			#var {current_time} {${current_time}:${tmpDiffSecondsPretty}${tmpDiffSeconds} am}
+		};
+		#math {secs_to_midnight} {(24 * 60) - (($current_hour * 60) + $tmpDiffSeconds)};
+		#unvar {tmpDiffSeconds};
+		#unvar {tmpDiffSecondsPretty}
+	};
+	#math {tmpDusk} {$months[$current_month][dusk] - 12};
+	#if {"%1" != ""} {#send {%1 Game time ${current_time}:    Dawn: $months[$current_month][dawn] am, Dusk: $tmpDusk pm.}};
+	#else {
+		#echo {Game time %s:    Dawn: %s am, Dusk: %s pm.} {$current_time} {$months[$current_month][dawn]} {$tmpDusk};
+		#echo {It is currently %s, in %s, (%s).} {$current_state} {$current_month_name} {$months[$current_month][season]};
+		#if {"$till_next_state" != "1"} {#var {tmpNextStatePretty} {s.}};
+		#else {#var {tmpNextStatePretty} {!}};
+		#echo {Time left until %s is less than %s tick%s} {$next_state} {$till_next_state} {$tmpNextStatePretty};
+		#unvar {tmpNextStatePretty};
+		#math {in_mume_days} {((((($current_month - 1) / 3) * 3 + 3) - $current_month) * 30) + (30 - $current_day) + (1 - ($current_hour / 24))};
+		#if {"$in_mume_days" != "1"} {#var {in_mume_days_pretty} {s}};
+		#else {#var {in_mume_days_pretty} {}};
+		#math {in_rl_hours} {$in_mume_days * 24 / 60};
+		#if {"$in_rl_hours" != "1"} {#var {in_rl_hours_pretty} {s.}};
+		#else {#var {in_rl_hours_pretty} {.}};
+		#regex {$months[$current_month][season]} {{Winter|Spring|Summer|Autumn}$} {
+			#echo {%s ends in %s mume day%s or %s real-life hour%s} {&1} {$in_mume_days} {$in_mume_days_pretty} {$in_rl_hours} {$in_rl_hours_pretty};
+		};
+		#unvar {in_mume_days};
+		#unvar {in_mume_days_pretty};
+		#unvar {in_rl_hours_pretty};
+		#math {in_mume_days} {((12 - $current_month) * 30) + (30 - $current_day) + (1 - ($current_hour / 24))};
+		#math {in_rl_days} {(($in_mume_days * 24 / 60) / 24)};
+		#if {"$in_rl_days" != "1"} {#var {in_rl_days_pretty} {s}};
+		#else {#var {in_rl_days_pretty} {}};
+		#math {in_rl_hours} {$in_rl_hours % 24};
+		#if {"$in_rl_hours" != "1"} {#var {in_rl_hours_pretty} {s.}};
+		#else {#var {in_rl_hours_pretty} {.}};
+		#echo {Next winter starts in %s real-life day%s and %s hour%s} {$in_rl_days} {$in_rl_days_pretty} {$in_rl_hours} {$in_rl_hours_pretty};
+		#unvar {in_mume_days};
+		#unvar {in_rl_days};
+		#unvar {in_rl_days_pretty};
+		#unvar {in_rl_hours};
+		#unvar {in_rl_hours_pretty}
+	}
+}
+
+#function {_timer} {
+	#format {tmpEpoch} {%T};
+	#math {result} {($tmpEpoch - $init_timer) * 1000};
+	#unvar {tmpEpoch}
+}
+
+#alias {_time_tick} {
+	#math {current_hour} {$current_hour % 24 + 1};
+	#if {"$current_hour" == "24"} {#math {current_day} {$current_day % 30 + 1}};
+	#if {("$current_day" == "1") && ("$current_hour" == "24")} {
+		#math {current_month} {$current_month % 12 + 1};
+		#foreach {$months[]} {i} {
+			#if {"$months[$i][name]" == "$current_month_name"} {
+				#math {tmpNextMonth} {$i + 1};
+				#if {"$current_month" == "1"} {#math {tmpNextMonth} {$tmpNextMonth - 12}};
+				#var {current_month_name} {$months[$tmpNextMonth][name]};
+				#unvar {tmpNextMonth};
+				#break
+			}
+		};
+		#if {"$current_month" == "1"} {#math {current_year} {$current_year + 1}};
+		#echo {%s has begun with the month of %s} {$months[$current_month][season]} {$current_month_name}
+	}
+}
+
+#alias {_reset_timer} {
+	#if {"%1" == "now"} {_time_tick};
+	#ticker {tick_timer} {_time_tick} {60}
+}
+
+#alias {_sync_precise} {
+	#math {difference} {@_timer{} - %2 * 1000};
+	#if {("%1" == "12") && ("%3" == "am")} {#var {current_hour} {24}};
+	#elseif {("%1" == "12") && ("%3" == "pm")} {#var {current_hour} {12}};
+	#elseif {"%3" == "am"} {#var {current_hour} {%1}};
+	#elseif {"%3" == "pm"} {#math {current_hour} {%1 + 12}};
+	#unticker {tick_timer};
+	#math {tmpSeconds} {(60 - %2) % 60};
+	#if {"$tmpSeconds" == "0"} {#delay {tick_reset} {_reset_timer} {$tmpSeconds}};
+	#else {#delay {tick_reset} {_reset_timer now} {$tmpSeconds}};
+	#unvar {tmpSeconds}
+}
+
+#alias {_sync_event} {
+	#var {difference} {@_timer{}};
+	#if {"%2" != ""} {#math {current_hour} {$months[$current_month][%1] + %2}};
+	#else {#var {current_hour} {$months[$current_month][%1]}};
+	_reset_timer
+}
+
+#alias {ti} {_time_check}
+#alias {nti} {_time_check narrate}
+#alias {sti} {_time_check say}
+
+#action {^The day has begun.$} {_sync_event dawn 1}
+#action {^Light gradually filters in, proclaiming a new sunrise outside.$} {_sync_event dawn}
+#action {^The night has begun.$} {_sync_event dusk 1}
+#action {^The last ray of light fades, and all is swallowed up in darkness.$} {_sync_event dusk 1}
+#action {^The deepening gloom announces another sunset outside.$} {_sync_event dusk}
+
+#action {^A huge clock is standing here.$} {#send {look at clock}}
+#action {^The current time is {[1-9]|1[0-2]}:{[0-5]\d} {[ap]m}.$} {_sync_precise %1 %2 %3}
+#action {^{([1-9]|1[0-2])([ap]m) on \w+|\w+}, the %d{st|nd|rd|th} of %w, Year {(\d{4})} of the Third Age.$} {
+	#var {current_day} {%4};
+	#var {current_month_name} {%6};
+	#var {current_year} {%7};
+	#foreach {$months[]} {i} {
+		#if {"$months[$i][name]" == "$current_month_name"} {
+			#math {current_month} {($i - 1) % 12 + 1};
+			#break
+		}
+	};
+	#if {"%3" != ""} {_sync_precise %2 30 %3}
+}
+
+#format {init_timer} {%T}
+
+#var months[1] {{name}{Afteryule}{dawn}{8}{dusk}{18}{season}{Early-Winter}}
+#var months[2] {{name}{Solmath}{dawn}{9}{dusk}{17}{season}{Winter}}
+#var months[3] {{name}{Rethe}{dawn}{8}{dusk}{18}{season}{Late-Winter}}
+#var months[4] {{name}{Astron}{dawn}{7}{dusk}{19}{season}{Early-Spring}}
+#var months[5] {{name}{Thrimidge}{dawn}{7}{dusk}{20}{season}{Spring}}
+#var months[6] {{name}{Forelithe}{dawn}{6}{dusk}{20}{season}{Late-Spring}}
+#var months[7] {{name}{Afterlithe}{dawn}{5}{dusk}{21}{season}{Early-Summer}}
+#var months[8] {{name}{Wedmath}{dawn}{4}{dusk}{22}{season}{Summer}}
+#var months[9] {{name}{Halimath}{dawn}{5}{dusk}{21}{season}{Late-Summer}}
+#var months[10] {{name}{Winterfilth}{dawn}{6}{dusk}{20}{season}{Early-Autumn}}
+#var months[11] {{name}{Blotmath}{dawn}{7}{dusk}{20}{season}{Autumn}}
+#var months[12] {{name}{Foreyule}{dawn}{7}{dusk}{19}{season}{Late-Autumn}}
+#var months[13] {{name}{Narwain}}
+#var months[14] {{name}{Ninui}}
+#var months[15] {{name}{Gwaeron}}
+#var months[16] {{name}{Gwirith}}
+#var months[17] {{name}{Lothron}}
+#var months[18] {{name}{Norui}}
+#var months[19] {{name}{Cerveth}}
+#var months[20] {{name}{Urui}}
+#var months[21] {{name}{Ivanneth}}
+#var months[22] {{name}{Narbeleth}}
+#var months[23] {{name}{Hithui}}
+#var months[24] {{name}{Birithron}}
+
+#var {current_month} {1}
+#var {current_month_name} {}
+#var {current_hour} {0}
+#var {current_day} {0}
+#var {current_year} {0}
+#var {current_time} {}
+#var {current_state} {}
+#var {next_state} {}
+#var {till_next_state} {}
+#var {difference} {0}
+#var {secs_to_midnight} {0}

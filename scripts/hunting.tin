@@ -1,0 +1,79 @@
+#alias {rr} {#send {get all.arrow all.corpse\nget all.arrow\nput all.arrow quiver}}
+
+#alias {rq} {#send {reveal quick}}
+#alias {rt} {#send {reveal thorough}}
+
+#alias {sq} {#send {search quick}}
+#alias {st} {#send {search thorough}}
+
+#alias {bs.} {doTarget backstab}
+#alias {j} {doTarget backstab}
+#alias {c.} {doTarget consider}
+#alias {e.} {doTarget examine}
+#alias {s.} {doTarget shoot}
+#alias {t.} {doTarget track}
+#alias {w.} {doTarget where}
+#alias {k.} {doTarget kill}
+#alias {kk} {doTarget kill}
+#alias {b.} {doTarget bash}
+#alias {bb} {doTarget bash}
+#alias {bf} {doTarget bash;#send flee}
+#alias {kf} {doTarget kill;#send flee}
+#alias {sf} {doTarget shoot;#send flee}
+
+#alias {kb} {#send {kill *bear*}}
+#alias {ke} {#send {kill *elf*}}
+#alias {khe} {#send {kill *half-elf*}}
+#alias {kd} {#send {kill *dwarf*}}
+#alias {kh} {#send {kill *hobbit*}}
+#alias {km} {#send {kill *man*}}
+#alias {ko} {#send {kill *orc*}}
+#alias {kt} {#send {kill *troll*}}
+
+#alias {ttf} {#send {label t};tt t}
+#alias {tta} {tt AGAIN}
+#alias {ttc} {tt CLEAR}
+#alias {ttt} {tt t}
+#alias {ttb} {tt *bear*}
+#alias {ttd} {tt *dwarf*}
+#alias {tte} {tt *elf*}
+#alias {tthe} {tt *half-elf*}
+#alias {tth} {tt *hobbit*}
+#alias {ttm} {tt *man*}
+#alias {tto} {tt *orc*}
+#alias {ttr} {tt *troll*}
+
+#alias {doTarget} {
+	#if {"%0" == ""} {#echo {No action given to do to target.}};
+	#elseif {"$targeting" != ""} {#send {%0 $targeting}};
+	#else {#echo {Target undefined.}}
+}
+
+#alias {tt} {
+	#if {"%1" == "CLEAR"} {
+		#var {targeting} {CLEAR};
+		#echo {Target cleared.}
+	};
+	#elseif {"%1" == "AGAIN"} {
+		#if {"$targeting" != "CLEAR"} {
+			#echo {Targeting $targeting again!};
+			#send {label $targeting t}
+		};
+		#else {
+			#echo {Target is undefined! Can not target again.}
+		}
+	};
+	#elseif {"%1" == "t"} {
+		#echo {Target now t!};
+		#var {targeting} {t}
+	};
+	#elseif {"%1" != ""} {
+		#echo {Target now %1.};
+		#send {label %1 t};
+		#var {targeting} {%1}
+	};
+	#elseif {"$targeting" != "CLEAR"} {#echo {Targeting ${targeting}!}};
+	#else {#echo {Target undefined.}}
+}
+
+#var {targeting} {CLEAR}

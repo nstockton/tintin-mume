@@ -1,0 +1,23 @@
+#action {^The %w {is|are} {open|closed}.$} {#var {door_name} {%1}}
+#action {^You skillfully discover a hidden %w.$} {#var {door_name} {%1}}
+#action {^The %w {seem|seems} to be closed.$} {
+	#map undo;
+	#var {door_name} {%1};
+	#if {"$auto_open" == "on"} {#send {open $door_name}}
+}
+
+#alias {dl} {#send {lock $door_name}}
+#alias {db} {#send {bash $door_name}}
+#alias {dp} {#send {pick $door_name}}
+#alias {du} {#send {unlock $door_name}}
+#alias {dc} {#send {close $door_name}}
+#alias {do} {#send {open $door_name}}
+#alias {autoopen} {
+	#if {("%1" == "on") || ("%1" == "off")} {#var {auto_open} {%1}};
+	#elseif {"$auto_open" == "off"} {#var {auto_open} {on}};
+	#else {#var {auto_open} {off}};
+	#echo {Auto Open $auto_open}
+}
+
+#var {auto_open} {on}
+#var {door_name} {}

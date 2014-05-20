@@ -1,0 +1,102 @@
+#message {ACTIONS} {OFF}
+#message {ALIASES} {OFF}
+#message {CLASSES} {OFF}
+#message {CONFIGURATIONS} {OFF}
+#message {DELAYS} {OFF}
+#message {EVENTS} {OFF}
+#message {FUNCTIONS} {OFF}
+#message {GAGS} {OFF}
+#message {HIGHLIGHTS} {OFF}
+#message {HISTORIES} {OFF}
+#message {MACROS} {OFF}
+#message {PATHS} {OFF}
+#message {PATHDIRS} {OFF}
+#message {PROMPTS} {OFF}
+#message {SUBSTITUTIONS} {OFF}
+#message {TABS} {OFF}
+#message {TICKERS} {OFF}
+#message {VARIABLES} {OFF}
+
+#CONFIG           {256 COLORS}  {OFF}
+#CONFIG           {AUTO TAB}  {5000}
+#CONFIG           {BUFFER SIZE}  {20000}
+#CONFIG           {CHARSET}  {ASCII}
+#CONFIG {COLOR PATCH} {OFF}
+#config {CONVERT META} {OFF}
+#config {DEBUG TELNET} {OFF}
+#CONFIG {MCCP} {OFF}
+#CONFIG {LOG LEVEL} {HIGH}
+#CONFIG           {COMMAND COLOR}  {}
+#CONFIG           {COMMAND ECHO}  {OFF}
+#CONFIG           {CONNECT RETRY}  {15}
+#CONFIG           {HISTORY SIZE}  {1000}
+#CONFIG           {LOG}  {RAW}
+#CONFIG           {PACKET PATCH}  {0.00}
+#CONFIG           {REPEAT CHAR}  {!}
+#CONFIG           {REPEAT ENTER}  {OFF}
+#CONFIG           {SCROLL LOCK}  {ON}
+#CONFIG           {SPEEDWALK}  {OFF}
+#CONFIG           {TINTIN CHAR}  {#}
+#CONFIG           {VERBATIM}  {OFF}
+#CONFIG           {VERBATIM CHAR}  {\}
+#CONFIG           {VERBOSE}  {OFF}
+#CONFIG           {WORDWRAP}  {ON}
+#PATHDIR          {n}  {s}  {1}
+#PATHDIR          {e}  {w}  {2}
+#PATHDIR          {s}  {n}  {4}
+#PATHDIR          {w}  {e}  {8}
+#PATHDIR          {u}  {d}  {16}
+#PATHDIR          {d}  {u}  {32}
+
+#nop Scripting languages
+#read scripts/python.tin
+
+#nop Substitutions
+#read scripts/herb_subs.tin
+#read scripts/key_subs.tin
+#read scripts/lockpick_subs.tin
+#read scripts/mob_subs.tin
+
+#nop Native TinTin language scripts
+#read scripts/auto_log.tin
+#read scripts/doors.tin
+#read scripts/hunting.tin
+#read scripts/grouping.tin
+#read scripts/mapper.tin
+#read scripts/misc.tin
+#read scripts/path_walker.tin
+#read scripts/reenter.tin
+#read scripts/report.tin
+#read scripts/spell_translate.tin
+#read scripts/time.tin
+#read scripts/xp_counter.tin
+
+#nop Scripts that require Python
+#read scripts/communication.tin
+#read scripts/secrets.tin
+#read scripts/sounds.tin
+
+#event {SESSION DISCONNECTED} {
+	#if {"%0" == "mume"} {
+		#gts;
+		#python sounds.unload();
+		#python exit();
+		#end
+	}
+}
+
+#action {^If you have never played MUME before, type NEW to create a new character,$} {
+	#python sounds.load();
+	xpReset;
+	#send {~$#EP2\nG}
+}
+#action {^{Reconnecting|Welcome to the land of Middle-earth\. May your visit here be\.\.\. interesting}.$} {
+	#send {\xFF\xFD\x01};
+	#map read maps/arda.map;
+	#map goto;
+	#send {info CHARNAME: %M.};
+	#send {time};
+	#send {info XPCOUNTER: %x %t %X %T.}
+}
+#alias {connect} {#session mume 193.134.218.99 4242;#unalias {connect}}
+#echo {Type 'connect' to connect to mume.}

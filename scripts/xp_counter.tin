@@ -1,0 +1,35 @@
+#alias {xpReset} {
+	#var {session_xp} {0};
+	#var {session_tp} {0};
+	#var {old_xp} {0};
+	#var {old_tp} {0}
+}
+
+#alias {xp} {
+	#echo {Gained XP: $gained_xp    TP: $gained_tp};
+	#echo {Session XP: $session_xp    TP: $session_tp};
+	#echo {Needed XP: $needed_xp    TP: $needed_tp}
+}
+
+#action {^You receive your share of experience.$} {#send {info XPCOUNTER: %x %t %X %T.}}
+#action {^XPCOUNTER: %d %d %d %d.$} {
+	#if {$old_xp} {#math {gained_xp} {%1 - $old_xp}};
+	#if {$old_tp} {#math {gained_tp} {%2 - $old_tp}};
+	#math {session_xp} {$session_xp + $gained_xp};
+	#math {session_tp} {$session_tp + $gained_tp};
+	#var {old_xp} {%1};
+	#var {old_tp} {%2};
+	#var {needed_xp} {%3};
+	#var {needed_tp} {%4};
+	xp;
+	#line gag
+}
+
+#var {gained_xp} {0}
+#var {gained_tp} {0}
+#var {session_xp} {0}
+#var {session_tp} {0}
+#var {needed_xp} {0}
+#var {needed_tp} {0}
+#var {old_xp} {0}
+#var {old_tp} {0}

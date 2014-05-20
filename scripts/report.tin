@@ -1,0 +1,41 @@
+#alias {rpf} {rpscore;rptnl}
+#alias {tnl} {#send {info tnlreport: %X %T}}
+
+#alias {rpscore} {
+	#var {will_report_score} {true};
+	#send {score}
+}
+
+#alias {rptnl} {
+	#var {will_report_tnl} {true};
+	#send {info tnlreport: %X %T}
+}
+
+#action {^tnlreport: %d %d$} {
+	#format {tmpOutput} {%mK XP and %s TP to reach the next level.} {%1 / 1000} {%2};
+	#echo {You need %s} {$tmpOutput};
+	#if {"$will_report_tnl" == "true"} {
+		#send {emote needs $tmpOutput};
+		#var {will_report_tnl} {false}
+	};
+	#unvar {tmpOutput};
+	#line gag
+}
+
+#action {^%d/%d hits{(, (\d+)/(\d+) mana,)?} and %d/%d moves.$} {
+	#format {tmpOutput} {HP: %s/%s [%m%s],} {%1} {%2} {%1*100/%2} {%};
+	#if {"%6" != ""} {
+		#format {tmpOutput} {%s Mana: %s/%s [%m%s],} {$tmpOutput} {%5} {%6} {%5*100/%6} {%};
+	};
+	#format {tmpOutput} {%s Moves: %s/%s [%m%s].} {$tmpOutput} {%7} {%8} {%7*100/%8} {%};
+	#echo {%s} {$tmpOutput};
+	#if {"$will_report_score" == "true"} {
+		#send {emote reports: $tmpOutput};
+		#var {will_report_score} {false}
+	};
+	#unvar {tmpOutput};
+	#line gag
+}
+
+#var {will_report_score} {false}
+#var {will_report_tnl} {false}

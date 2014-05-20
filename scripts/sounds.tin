@@ -1,0 +1,49 @@
+#python
+
+import sounds
+
+#gts
+
+#action {^*%+{Orc|Troll|Man|Woman|Elf|Half-Elf|Dwarf|Hobbit|Bear|Numenorean|N\xFAmen\xF3rean}*%*{standing|sitting|resting|sleeping|fighting|riding|knocks a missile|begins some strange|arrived|leaves}%+{((north|south|east|west|up|down|above|below).*)?}$} {
+	#if {("%2" == "Numenorean") || ("%2" == "N\xFAmen\xF3rean") || ("%2" == "Woman")} {#var {tmpPlayer} {Man}};
+	#else {#var {tmpPlayer} {%2}};
+	#if {"%4" == "knocks a missile"} {#var {tmpAction} {shooting}};
+	#elseif {"%4" == "begins some strange"} {
+		#var {tmpAction} {casting};
+		#line gag;
+		#showme {*%1%2* is casting!}
+	};
+	#else {#var {tmpAction} {%4}};
+	playsound ${tmpPlayer}${tmpAction}%8.wav;
+	#unvar {tmpPlayer};
+	#unvar {tmpAction}
+}
+
+#alias {playsound} {#python sounds.play("%0", "${volume}")}
+#alias {stopsound} {#python sounds.stop("%0")}
+#alias {mutesound} {#python sounds.mute()}
+#alias {vol} {
+	#if {"%1" == "up"} {
+		#if {$volume < 81} {
+			#math {volume} {$volume + 20};
+			#echo {Increasing volume.}
+		};
+		#else {
+			#var {volume} {100};
+			#echo {Maximum volume!}
+		}
+	};
+	#elseif {"%1" == "down"} {
+		#if {$volume > 21} {
+			#math {volume} {$volume - 20};
+			#echo {Decreasing volume.}
+		};
+		#else {
+			#var {volume} {1};
+			#echo {Minimum volume!}
+		}
+	};
+	#else {#showme Syntax: vol [up|down]}
+}
+
+#var {volume} {100}

@@ -1,0 +1,46 @@
+#alias {pathWalkNext} {
+	#var {tmpExitsLine} {%0};
+	#replace {tmpExitsLine} {\^} {};
+	#list {tmpPwDirections} {create} {};
+	#regex {$tmpExitsLine} {=north=} {#if {"$lastDirection" != "south"} {#list {tmpPwDirections} {add} {north}}};
+	#regex {$tmpExitsLine} {=south=} {#if {"$lastDirection" != "north"} {#list {tmpPwDirections} {add} {south}}};
+	#regex {$tmpExitsLine} {=east=} {#if {"$lastDirection" != "west"} {#list {tmpPwDirections} {add} {east}}};
+	#regex {$tmpExitsLine} {=west=} {#if {"$lastDirection" != "east"} {#list {tmpPwDirections} {add} {west}}};
+	#regex {$tmpExitsLine} {=up=} {#if {"$lastDirection" != "down"} {#list {tmpPwDirections} {add} {up}}};
+	#regex {$tmpExitsLine} {=down=} {#if {"$lastDirection" != "up"} {#list {tmpPwDirections} {add} {down}}};
+	#unvar {tmpExitsLine};
+	#if {&tmpPwDirections[] == 1} {
+		#var {lastDirection} {$tmpPwDirections[1]};
+		$lastDirection
+	};
+	#elseif {&tmpPwDirections[] == 0} {#echo {End of road reached.}};
+	#else {#echo {Junction reached.}};
+	#unvar {tmpPwDirections}
+}
+
+#alias {p} {
+	#var {tmpDirection} {};
+	#forall {north;south;east;west;up;down} {
+		#if {"$tmpDirection" == ""} {#break};
+		#if {"%1" != ""} {#regex {&0} {^%1} {#var {tmpDirection} {&0}}}
+	};
+	#if {"$tmpDirection" != ""} {
+		#var {pathWalkEnabled} {true};
+		#var {lastDirection} {$tmpDirection};
+		$lastDirection
+	};
+	#else {#echo {Invalid starting direction.}};
+	#unvar {tmpDirection}
+}
+
+#alias {pp} {
+	#var {pathWalkEnabled} {false};
+	#echo {Path Walker Disabled.}
+}
+
+#action {^Exits: %+.$} {
+	#if {"$pathWalkEnabled" == "true"} {pathWalkNext %1}
+}
+
+#var {pathWalkEnabled} {false}
+#var {lastDirection} {}

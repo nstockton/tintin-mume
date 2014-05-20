@@ -1,0 +1,30 @@
+#gag {^You flee head over heels.$}
+#gag {^You seek to escape...$}
+
+#sub {^PANIC! You {couldn't escape|can't quit the fight}!$} {Panic!}
+
+#var lastFled {none}
+
+#action {^You flee {north|south|east|west|up|down}.$} {
+	#map move %1;
+	#var lastFled {%1};
+	#echo {%1!};
+	#line gag
+}
+
+#alias {v} {
+	#if {"$lastFled" == "none"} {
+		#nop Do nothing.
+	};
+	#else {
+		#switch {"$lastFled"} {
+			#case {"north"} {south};
+			#case {"south"} {north};
+			#case {"east"} {west};
+			#case {"west"} {east};
+			#case {"up"} {down};
+			#case {"down"} {up}
+		};
+		#var lastFled {none}
+	}
+}
