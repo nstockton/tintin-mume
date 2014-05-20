@@ -7,5 +7,3 @@ __pycache__/
 
 # Logs
 most_recent.log
-logs/*
-communication/*
