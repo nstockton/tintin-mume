@@ -12,7 +12,12 @@ import communication
 			#if {"%4" != "tells the group"} {#var {replyTo} {%3}};
 			playsound tells.wav
 		};
-		#else  {#line {log} {communication/%4.txt}}
+		#else  {
+			#if {"%4" == "narrates"} {
+				playsound narrates.wav
+			};
+			#line {log} {communication/%4.txt}
+		}
 	}
 }
 

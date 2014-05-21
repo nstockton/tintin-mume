@@ -19,6 +19,18 @@ import sounds
 	#unvar {tmpAction}
 }
 
+#action {^You begin to feel {hungry|thirsty}.$} {
+	playsound %1.wav
+}
+
+#action {^You gain a level!$} {
+	playsound tada.wav
+}
+
+#action {^You {feel a hidden presence|smell blood}.$} {
+	playsound hidden.wav
+}
+
 #alias {playsound} {#python sounds.play("%0", "${volume}")}
 #alias {stopsound} {#python sounds.stop("%0")}
 #alias {mutesound} {#python sounds.mute()}
