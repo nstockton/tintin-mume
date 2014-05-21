@@ -76,6 +76,10 @@
 #read scripts/secrets.tin
 #read scripts/sounds.tin
 
+#event {PROGRAM START} {
+	#session {mume} {193.134.218.99} {4242}
+}
+
 #event {SESSION DISCONNECTED} {
 	#if {"%0" == "mume"} {
 		#gts;
@@ -98,5 +102,3 @@
 	#send {time};
 	#send {info XPCOUNTER: %x %t %X %T.}
 }
-#alias {connect} {#session mume 193.134.218.99 4242;#unalias {connect}}
-#echo {Type 'connect' to connect to mume.}
