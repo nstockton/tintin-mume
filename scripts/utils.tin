@@ -1,0 +1,11 @@
+#function {math} {
+	#math {result} {%0}
+}
+
+#function {listToSet} {
+	#forall {$%0[%*]} {
+		#var {tmpResult[&0]} {true}
+	};
+	#var {result} {$tmpResult};
+	#unvar {tmpResult}
+}

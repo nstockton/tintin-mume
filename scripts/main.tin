@@ -69,6 +69,7 @@
 #read scripts/report.tin
 #read scripts/spell_translate.tin
 #read scripts/time.tin
+#read scripts/utils.tin
 #read scripts/xp_counter.tin
 
 #nop Scripts that require Python
