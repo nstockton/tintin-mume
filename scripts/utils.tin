@@ -9,3 +9,11 @@
 	#var {result} {$tmpResult};
 	#unvar {tmpResult}
 }
+
+#var {reverseDirections} {}
+#var {reverseDirections[north]} {south}
+#var {reverseDirections[south]} {north}
+#var {reverseDirections[east]} {west}
+#var {reverseDirections[west]} {east}
+#var {reverseDirections[up]} {down}
+#var {reverseDirections[down]} {up}
