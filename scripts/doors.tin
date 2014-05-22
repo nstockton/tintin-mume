@@ -11,7 +11,7 @@
 #alias {dp} {#send {pick $door_name}}
 #alias {du} {#send {unlock $door_name}}
 #alias {dc} {#send {close $door_name}}
-#alias {do} {#send {open $door_name}}
+#alias {do} {#send {open $door_name}} {4}
 #alias {autoopen} {
 	#if {("%1" == "on") || ("%1" == "off")} {#var {auto_open} {%1}};
 	#elseif {"$auto_open" == "off"} {#var {auto_open} {on}};
