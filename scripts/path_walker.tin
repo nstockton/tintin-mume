@@ -54,6 +54,7 @@
 			}
 		};
 		#else {
+			pp;
 			#echo {End of road reached.}
 		}
 	};
@@ -133,6 +134,7 @@
 			}
 		};
 		#else {
+			pp;
 			#echo {Junction reached.}
 		}
 	};
