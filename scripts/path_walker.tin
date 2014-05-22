@@ -1,20 +1,141 @@
 #alias {pathWalkNext} {
 	#var {tmpExitsLine} {%0};
 	#replace {tmpExitsLine} {\^} {};
-	#list {tmpPwDirections} {create} {};
-	#regex {$tmpExitsLine} {=north=} {#if {"$lastDirection" != "south"} {#list {tmpPwDirections} {add} {north}}};
-	#regex {$tmpExitsLine} {=south=} {#if {"$lastDirection" != "north"} {#list {tmpPwDirections} {add} {south}}};
-	#regex {$tmpExitsLine} {=east=} {#if {"$lastDirection" != "west"} {#list {tmpPwDirections} {add} {east}}};
-	#regex {$tmpExitsLine} {=west=} {#if {"$lastDirection" != "east"} {#list {tmpPwDirections} {add} {west}}};
-	#regex {$tmpExitsLine} {=up=} {#if {"$lastDirection" != "down"} {#list {tmpPwDirections} {add} {up}}};
-	#regex {$tmpExitsLine} {=down=} {#if {"$lastDirection" != "up"} {#list {tmpPwDirections} {add} {down}}};
-	#unvar {tmpExitsLine};
-	#if {&tmpPwDirections[] == 1} {
-		#var {lastDirection} {$tmpPwDirections[1]};
-		$lastDirection
+	#var {tmpPwDirections} {};
+	#regex {$tmpExitsLine} {=north=} {
+		#if {"$lastDirection" != "south"} {#var {tmpPwDirections[north]} {true}};
+		#else {#var {tmpPwDirections[north]} {false}}
 	};
-	#elseif {&tmpPwDirections[] == 0} {#echo {End of road reached.}};
-	#else {#echo {Junction reached.}};
+	#regex {$tmpExitsLine} {=south=} {
+		#if {"$lastDirection" != "north"} {#var {tmpPwDirections[south]} {true}};
+		#else {#var {tmpPwDirections[south]} {false}}
+	};
+	#regex {$tmpExitsLine} {=east=} {
+		#if {"$lastDirection" != "west"} {#var {tmpPwDirections[east]} {true}};
+		#else {#var {tmpPwDirections[east]} {false}}
+	};
+	#regex {$tmpExitsLine} {=west=} {
+		#if {"$lastDirection" != "east"} {#var {tmpPwDirections[west]} {true}};
+		#else {#var {tmpPwDirections[west]} {false}}
+	};
+	#regex {$tmpExitsLine} {=up=} {
+		#if {"$lastDirection" != "down"} {#var {tmpPwDirections[up]} {true}};
+		#else {#var {tmpPwDirections[up]} {false}}
+	};
+	#regex {$tmpExitsLine} {=down=} {
+		#if {"$lastDirection" != "up"} {#var {tmpPwDirections[down]} {true}};
+		#else {#var {tmpPwDirections[down]} {false}}
+	};
+	#unvar {tmpExitsLine};
+	#if {&tmpPwDirections[] == 2} {
+		#forall {$tmpPwDirections[]} {
+			#if {"$tmpPwDirections[&0]" == "true"} {
+				#var {lastDirection} {&0};
+				$lastDirection
+			}
+		}
+	};
+	#elseif {&tmpPwDirections[] <= 1} {
+		#if {("$roomName" == "The East Road") || ("$roomName" == "Inside the Small Village of Frogmorton") || ("$roomName" == "Michel Delving") || ("$roomName" == "Road to Grey Havens") || ("$roomName" == "A Ford on the Way to Tharbad")} {
+			p $lastDirection
+		};
+		#elseif {"$roomName" == "Road to Tharbad"} {
+			#if {("$lastDirection" == "south") && (&tmpPwDirections[north])} {
+				p east
+			};
+			#elseif {("$lastDirection" == "west") && (&tmpPwDirections[north])} {
+				p north
+			};
+			#elseif {("$lastDirection" == "east") && (&tmpPwDirections[east])} {
+				p east
+			};
+			#elseif {("$lastDirection" == "west") && (&tmpPwDirections[east])} {
+				p west
+			}
+		};
+		#else {
+			#echo {End of road reached.}
+		}
+	};
+	#else {
+		#if {(("$roomName" == "A Fork") || ("$roomName" == "Greenholm Junction")) && (("$lastDirection" == "east") || ("$lastDirection" == "west"))} {
+			p $lastDirection
+		};
+		#elseif {("$roomName" == "Waymeet") && (("$lastDirection" == "west") || ("$lastDirection" == "north"))} {
+			#if {"$lastDirection" == "west"} {
+				p south
+			};
+			#elseif {"$lastDirection" == "north"} {
+				p east
+			}
+		};
+		#elseif {("$roomName" == "The Crossroad") && (("$lastDirection" == "south") || ("$lastDirection" == "west"))} {
+			#if {"$lastDirection" == "south"} {
+				p east
+			};
+			#elseif {"$lastDirection" == "west"} {
+				p north
+			}
+		};
+		#elseif {"$roomName" == "Road to Tharbad"} {
+			#if {(&tmpPwDirections[north]) && (&tmpPwDirections[south]) && (&tmpPwDirections[west]) && ("$lastDirection" != "south") && ("$lastDirection" != "west")} {
+				#if {"$lastDirection" == "east"} {
+					p south
+				};
+				#elseif {"$lastDirection" == "north"} {
+					p west
+				}
+			};
+			#elseif {(&tmpPwDirections[north]) && (&tmpPwDirections[east]) && (&tmpPwDirections[south]) && ("$lastDirection" != "north")} {
+				#if {"$lastDirection" == "south"} {
+					p east
+				};
+				#elseif {"$lastDirection" == "west"} {
+					p north
+				}
+			};
+			#elseif {(&tmpPwDirections[east]) && (&tmpPwDirections[west]) && (&tmpPwDirections[south]) && ("$lastDirection" != "north")} {
+				p $lastDirection
+			}
+		};
+		#elseif {"$roomName" == "Greenway"} {
+			#if {(&tmpPwDirections[north]) && (&tmpPwDirections[south]) && (&tmpPwDirections[west]) && ("$lastDirection" != "east")} {
+				p $lastDirection
+			};
+			#elseif {(&tmpPwDirections[north]) && (&tmpPwDirections[east]) && (&tmpPwDirections[west])} {
+				#if {"$lastDirection" == "west"} {
+					p north
+				};
+				#elseif {("$lastDirection" == "east") || ("$lastDirection" == "south")} {
+					p east
+				}
+			}
+		};
+		#elseif {"$roomName" == "The East Road"} {
+			#if {(&tmpPwDirections[east]) && (&tmpPwDirections[west]) && (&tmpPwDirections[south]) && ("$lastDirection" != "north")} {
+				p $lastDirection
+			};
+			#elseif {(&tmpPwDirections[east]) && (&tmpPwDirections[south]) && (&tmpPwDirections[north]) && ("$lastDirection" != "south")} {
+				#if {"$lastDirection" == "north"} {
+					p east
+				};
+				#elseif {"$lastDirection" == "west"} {
+					p south
+				}
+			};
+			#elseif {(&tmpPwDirections[west]) && (&tmpPwDirections[north]) && (&tmpPwDirections[south]) && ("$lastDirection" != "north")} {
+				#if {"$lastDirection" == "east"} {
+					p north
+				};
+				#elseif {"$lastDirection" == "south"} {
+					p west
+				}
+			}
+		};
+		#else {
+			#echo {Junction reached.}
+		}
+	};
 	#unvar {tmpPwDirections}
 }
 
