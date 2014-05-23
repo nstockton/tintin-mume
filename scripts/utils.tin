@@ -2,6 +2,98 @@
 	#math {result} {%0}
 }
 
+#function {strip} {
+	#format {result} {%p} {%0}
+}
+
+#function {len} {
+	#format {result} {%L} {%0}
+}
+
+#function {ord} {
+	#format {result} {%A} {%0}
+}
+
+#function {upper} {
+	#format {result} {%u} {%0}
+}
+
+#function {wrap} {
+	#format {result} {%w} {%0}
+}
+
+#function {capitalize} {
+	#format {result} {%n} {%0}
+}
+
+#function {reverse} {
+	#format {result} {%r} {%0}
+}
+
+#function {lower} {
+	#format {result} {%l} {%0}
+}
+
+#function {chr} {
+	#format {result} {%a} {%0}
+}
+
+#function {int} {
+	#format {result} {%d} {%0}
+}
+
+#function {float} {
+	#format {result} {%f} {%0}
+}
+
+#function {isdigit} {
+	#if {"@int{%0}" == "%0"} {#return {1}};
+	#else {#return {0}}
+}
+
+#function {abs} {
+	#if {%0 < 0} {#math {result} {%0 * -1}};
+	#else {#return {%0}}
+}
+
+#function {beginning} {
+	#format {result} {%.%2s} {%1}
+}
+
+#function {ending} {
+	#var {result} {@reverse{@beginning{{@reverse{%1}}{%2}}}}
+}
+
+#function {startswith} {
+	#if {"@beginning{{%1}{@len{%2}}}" == "%2"} {#return {1}};
+	#else {#return {0}}
+}
+
+#function {endswith} {
+	#if {"@ending{{%1}{@len{%2}}}" == "%2"} {#return {1}};
+	#else {#return {0}}
+}
+
+#function {isin} {
+	#regexp {%1} {%2} {#return {1}}{#return {0}}
+}
+
+#function {slice} {
+	#regexp {%1} {^{.{@math{%2-1}}}{.{@math{%3+0}}}} {#var {result} &2} {#var {result} {}}
+}
+
+#function {maplist} {
+	#var {result} {};
+	#switch {"%1"} {
+		#case {"name"} {#map {list} {variable} {result} {%2}};
+		#case {"exits"} {#map {list} {variable} {result} {} {%2}};
+		#case {"desc"} {#map {list} {variable} {result} {} {} {%2}};
+		#case {"area"} {#map {list} {variable} {result} {} {} {} {%2}};
+		#case {"note"} {#map {list} {variable} {result} {} {} {} {} {%2}};
+		#case {"terrain"} {#map {list} {variable} {result} {} {} {} {} {} {%2}}
+	}
+}
+
 #function {format} {
 	#format {result} {%1} {%2} {%3} {%4} {%5} {%6} {%7} {%8} {%9} {%10} {%11} {%12} {%13} {%14} {%15} {%16} {%17} {%18} {%19} {%20} {%21}
 }
