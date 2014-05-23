@@ -5,7 +5,7 @@
 }
 
 #alias {run} {
-	#format {tmpLocation} {%p} {%0};
+	#var {tmpLocation} {@strip{%0}};
 	#if {"$tmpLocation" == "c"} {
 		#if {"$lastDestination" != ""} {
 			#path {load} {};
@@ -18,16 +18,52 @@
 			#echo {No previous destination defined.}
 		}
 	};
+	#elseif {"%1" == "n"} {
+		#if {"%2" != ""} {
+			#var {tmpResults} {@maplist{{note}{%2}}};
+			#list {tmpResults} {create} {$tmpResults[]};
+			#if {&tmpResults[] == 1} {
+				#path {load} {};
+				#echo {Starting trip.};
+				#var {lastDestination} {$tmpResults[1]};
+				#map {find} {$lastDestination};
+				#var {isRunning} {true};
+				#path {walk} {forward}
+			};
+			#elseif {&tmpResults[] == 0} {
+				#echo {There are no rooms with the note '%2' in the database.}
+			};
+			#else {
+				#echo {Error: more than one room contains the note '%2'.}
+			};
+			#unvar {tmpResults}
+		};
+		#else {
+			#echo {You need to supply some note text to find.}
+		}
+	};
 	#elseif {"$tmpLocation" != ""} {
-		#path {load} {};
-		#echo {Starting trip.};
-		#var {lastDestination} {$tmpLocation};
-		#regex {$tmpLocation} {^%d$} {#map {find} {$tmpLocation}} {#map {find} {%*%i$tmpLocation%*}};
-		#var {isRunning} {true};
-		#path {walk} {forward}
+		#regexp {$tmpLocation} {^%d$} {} {#var {tmpLocation} {%*%i$tmpLocation%*}};
+		#var {tmpResults} {@maplist{{name}{$tmpLocation}}};
+		#list {tmpResults} {create} {$tmpResults[]};
+		#if {&tmpResults[] == 1} {
+			#path {load} {};
+			#echo {Starting trip.};
+			#var {lastDestination} {$tmpResults[1]};
+			#map {find} {$lastDestination};
+			#var {isRunning} {true};
+			#path {walk} {forward}
+		};
+		#elseif {&tmpResults[] == 0} {
+			#echo {There are no rooms with the name '%0' in the database.}
+		};
+		#else {
+			#echo {Error: more than one room name contains '%0'.}
+		};
+		#unvar {tmpResults}
 	};
 	#else {
-		#echo {Syntax: run [c|room ID|room name] - run from your current location to room. If 'c' is supplied instead of a room name or ID, the previous route (if any) will be recalculated and continued. Use the unrun command to cancel the running. (Make sure that there is only 1 matching room for room name with the rfind command before using this alias.)}
+		#echo {Syntax: run [n[ note]|c|room ID|room name] - run from your current location to room. If 'c' is given, the previous route (if any) will be recalculated and continued. If 'n' and some text are given, the destination will be set to the room which has a note matching text. Use the unrun command to cancel the running.}
 	};
 	#unvar {tmpLocation}
 }
@@ -78,8 +114,15 @@
 
 #alias {sync} {
 	#if {"$roomName" != ""} {
-		#echo {Syncing to first room found with name '%s'.} {$roomName};
-		#map goto $roomName
+		#var {tmpResults} {@maplist{{name}{$roomName}}};
+		#if {&tmpResults[] == 1} {
+			#echo {Syncing to room with name '%s'.} {$roomName};
+			#map goto $roomName
+		};
+		#else {
+			#echo {Unable to Sync: more than 1 room in the map has the name '%s'.} {$roomName}
+		};
+		#unvar {tmpResults}
 	};
 	#else {
 		#echo {Error: roomName variable is empty.}
