@@ -1,3 +1,10 @@
+#alias {notSynced} {
+	#if {"$isSynced" == "true"} {
+		#echo {Map no longer synced!};
+		#var {isSynced} {false}
+	}
+}
+
 #alias {rinfo} {
 	#format {tmpLocation} {%p} {%0};
 	#regex {$tmpLocation} {^%d$} {#map {at} {&1} {#map {info}}} {#map {info}};
@@ -117,6 +124,7 @@
 		#var {tmpResults} {@maplist{{name}{$roomName}}};
 		#if {&tmpResults[] == 1} {
 			#echo {Syncing to room with name '%s'.} {$roomName};
+			#var {isSynced} {true};
 			#map goto $roomName
 		};
 		#else {
@@ -201,29 +209,32 @@
 
 
 #nop Forced unknown movement
-#action {^You are borne along by a strong current.$} {#map leave}
-#action {^A guard leads you out of the house.$} {#map leave}
-#action {^Suddenly an explosion of ancient rhymes makes the space collapse around you!$} {#map leave}
-#action {^The pain stops, your vision clears, and you realize that you are elsewhere.$} {#map leave}
-#action {^You feel confused and move along randomly...$} {#map leave}
-#action {^You are swept away by the current.$} {#map leave}
-#action {^You are swept away by the powerful current of water.$} {#map leave}
-#action {^You reached the riverbank.$} {#map leave}
-#action {^You board the ferry.$} {#map leave}
-#action {^You leave the ferry.$} {#map leave}
-#action {^You bend close to the ground, seeking the path to Rivendell...$} {#map leave}
-#action {^You are dead! Sorry...$} {#map leave}
-#action {^With a jerk, the basket starts gliding down the rope towards the platform.$} {#map leave}
-#action {^You cannot control your mount on the slanted and unstable surface! You begin to slide to the north, and plunge toward the water below!$} {#map leave}
-#action {^The current pulls you faster. Suddenly, you are sucked downwards into darkness!$} {#map leave}
-#action {^You are washed blindly over the rocks, and plummet sickeningly downwards...$} {#map leave}
-#action {^You stop moving towards the {left|right} bank and drift downstream.$} {#map leave}
-#action {^Oops! You walk off the bridge and fall into the rushing water below!$} {#map leave}
-#action {^Holding your breath and with closed eyes, you are squeezed below the surface of the water.$} {#map leave}
-#action {^Stepping on the lizard corpses, you use some depressions in the wall for support, push the muddy ceiling apart and climb out of the cave.$} {#map leave}
+#action {^You are borne along by a strong current.$} {notSynced}
+#action {^You feel confused and move along randomly...$} {notSynced}
+#action {^You are swept away by the current.$} {notSynced}
+#action {^You are swept away by the powerful current of water.$} {notSynced}
+#action {^You board the ferry.$} {notSynced}
+#action {^You bend close to the ground, seeking the path to Rivendell...$} {notSynced}
+#action {^You are dead! Sorry...$} {notSynced}
+#action {^With a jerk, the basket starts gliding down the rope towards the platform.$} {notSynced}
+#action {^You cannot control your mount on the slanted and unstable surface! You begin to slide to the north, and plunge toward the water below!$} {notSynced}
+#action {^The current pulls you faster. Suddenly, you are sucked downwards into darkness!$} {notSynced}
+#action {^You are washed blindly over the rocks, and plummet sickeningly downwards...$} {notSynced}
+#action {^You stop moving towards the {left|right} bank and drift downstream.$} {notSynced}
+#action {^Oops! You walk off the bridge and fall into the rushing water below!$} {notSynced}
+#action {^Holding your breath and with closed eyes, you are squeezed below the surface of the water.$} {notSynced}
+#action {^Stepping on the lizard corpses, you use some depressions in the wall for support, push the muddy ceiling apart and climb out of the cave.$} {notSynced}
+
+#nop Forced resync
+#action {^Suddenly an explosion of ancient rhymes makes the space collapse around you!$} {#delay {0.15} {sync}}
+#action {^The pain stops, your vision clears, and you realize that you are elsewhere.$} {#delay {0.15} {sync}}
+#action {^A guard leads you out of the house.$} {#delay {0.15} {sync}}
+#action {^You leave the ferry.$} {#delay {0.15} {sync}}
+#action {^You reached the riverbank.$} {#delay {0.15} {sync}}
+#action {^At last Rivendell is within sight!$} {sync}
 
 #nop Forced known movement
-#action {^Your feet slip, making you fall to the east!$} {east}
+#nop #action {^Your feet slip, making you fall to the east!$} {east}
 
 #nop Store the current room name
 #action {~^\e[34;47;1;4m{[\w ,'-]+}\e[0m$} {
@@ -233,7 +244,7 @@
 		#path {walk} {forward}
 	}
 }
-#action {^It is pitch black...$} {
+#action {^{You just see a dense fog around you|It is pitch black}...$} {
 	#var {attemptingMove} {false};
 	#var {roomName} {};
 	#if {"$isRunning" == "true"} {
@@ -251,3 +262,4 @@
 #var {lastDestination} {}
 #var {isRunning} {false}
 #var {attemptingMove} {false}
+#var {isSynced} {false}
