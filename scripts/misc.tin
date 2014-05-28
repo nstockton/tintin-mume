@@ -10,4 +10,3 @@
 #alias {ws} {#send {wake\nstand}}
 #alias {cpack} {#send {remove cloak\nremove fur\nget cloak pack\nwear cloak\nput cloak pack\nput fur pack}}
 #alias {bpouch} {#send {remove boots\nget boots pouch\nwear boots\nput boots pouch}}
-#alias {initchar} {#send {change colour all none, look bold underline blue on white, narrate green, pray green, room-desc magenta, say green, tell green\ncompact on\nspam off\nbrief on\nprompt none\nchange wordwrap}}
