@@ -4,7 +4,7 @@ import sys
 
 sys.path.append("./pyLib")
 
-from scripts.tintin import TinTin
+from tintin import TinTin
 
 #read scripts/scripting.tin
 
