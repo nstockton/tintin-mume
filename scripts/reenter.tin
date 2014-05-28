@@ -6,25 +6,14 @@
 #var lastFled {none}
 
 #action {^You flee {north|south|east|west|up|down}.$} {
-	#map move %1;
 	#var lastFled {%1};
 	#echo {%1!};
 	#line gag
 }
 
 #alias {v} {
-	#if {"$lastFled" == "none"} {
-		#nop Do nothing.
-	};
-	#else {
-		#switch {"$lastFled"} {
-			#case {"north"} {south};
-			#case {"south"} {north};
-			#case {"east"} {west};
-			#case {"west"} {east};
-			#case {"up"} {down};
-			#case {"down"} {up}
-		};
+	#if {("$lastFled" != "none") && (&reverseDirections[$lastFled])} {
+		#send {$reverseDirections[$lastFled]};
 		#var lastFled {none}
 	}
 }

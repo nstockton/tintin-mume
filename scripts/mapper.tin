@@ -1,4 +1,5 @@
 #alias {notSynced} {
+	unrun SILENT;
 	#if {"$isSynced" == "true"} {
 		#echo {Map no longer synced!};
 		#var {isSynced} {false}
@@ -76,7 +77,9 @@
 }
 
 #alias {unrun} {
-	#echo {Canceling route!};
+	#if {"%1" != "SILENT"} {
+		#echo {Canceling route!}
+	};
 	#path {load} {};
 	#var {isRunning} {false}
 }
@@ -100,25 +103,6 @@
 	#unvar {tmpLocation}
 }
 
-#alias {mapUndo} {
-	#map {undo};
-	#path {load} {};
-	#var {isRunning} {false}
-}
-
-#alias {mapMove} {
-	#var {attemptingMove} {true};
-	#map move %1;
-	#send {%1}
-}
-
-#alias {^{(cli |clim |climb )?}{n|no|nor|north}{( .*)?}$} {mapMove north}
-#alias {^{(cli |clim |climb )?}{s|so|sou|south}{( .*)?}$} {mapMove south}
-#alias {^{(cli |clim |climb )?}{e|ea|eas|east}{( .*)?}$} {mapMove east}
-#alias {^{(cli |clim |climb )?}{w|we|wes|west}{( .*)?}$} {mapMove west}
-#alias {^{(cli |clim |climb )?}{u|up}{( .*)?}$} {mapMove up}
-#alias {^{(cli |clim |climb )?}{d|do|dow|down}{( .*)?}$} {mapMove down}
-
 #alias {sync} {
 	#if {"$roomName" != ""} {
 		#var {tmpResults} {@maplist{{name}{$roomName}}};
@@ -138,77 +122,45 @@
 }
 
 #nop canceled movement patterns
-#action {^You can't seem to escape the roots!$} {mapUndo}
-#action {^You cannot ride there.$} {mapUndo}
-#action {^Your boat cannot enter this place.$} {mapUndo}
-#action {^A guard steps in front of you.$} {mapUndo}
-#action {^The clerk bars your way.$} {mapUndo}
-#nop #action {^You cannot go that way...$} {mapUndo}
-#nop #action {^Alas, you cannot go that way...$} {mapUndo}
-#action {^You need to swim to go there.$} {mapUndo}
-#action {^You failed swimming there.$} {mapUndo}
-#action {^You failed to climb there and fall down, hurting yourself.$} {mapUndo}
-#action {^Your mount cannot climb the tree!$} {mapUndo}
-#action {^No way! You are fighting for your life!$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	}
-}
-#action {^In your dreams, or what?$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	}
-}
-#action {^You are too exhausted.$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	}
-}
-#action {^You unsuccessfully try to break through the ice.$} {mapUndo}
-#action {^Your mount refuses to follow your orders!$} {mapUndo}
-#action {^You are too exhausted to ride.$} {mapUndo}
-#action {^You can't go into deep water!$} {mapUndo}
-#action {^You don't control your mount!$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	}
-}
-#action {^Your mount is too sensible to attempt such a feat.$} {mapUndo}
-#action {^Scouting in that direction is impossible.$} {mapUndo}
-#action {^Scouting {north|south|east|west|up|down}wards is too difficult.$} {mapUndo}
-#action {^Oops! You cannot go there riding!$} {mapUndo}
-#action {^A {pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf}{( \(\w\))?} is too exhausted.$} {mapUndo}
-#action {^You'd better be swimming if you want to dive underwater.$} {mapUndo}
-#action {^You need to climb to go there.$} {mapUndo}
-#action {^You cannot climb there.$} {mapUndo}
-#action {^If you still want to try, you must 'climb' there.$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	}
-}
-#action { {prevents|keeps} you from going {north|south|east|west|up|down|upstairs|downstairs|past (him|her|it)}.$} {mapUndo}
+#action {^You cannot ride there.$} {unrun SILENT}
+#action {^Your boat cannot enter this place.$} {unrun SILENT}
+#action {^A guard steps in front of you.$} {unrun SILENT}
+#action {^The clerk bars your way.$} {unrun SILENT}
+#action {^You cannot go that way...$} {unrun SILENT}
+#action {^Alas, you cannot go that way...$} {unrun SILENT}
+#action {^You need to swim to go there.$} {unrun SILENT}
+#action {^You failed swimming there.$} {unrun SILENT}
+#action {^You failed to climb there and fall down, hurting yourself.$} {unrun SILENT}
+#action {^Your mount cannot climb the tree!$} {unrun SILENT}
+#action {^No way! You are fighting for your life!$} {unrun SILENT}
+#action {^In your dreams, or what?$} {unrun SILENT}
+#action {^You are too exhausted.$} {unrun SILENT}
+#action {^You unsuccessfully try to break through the ice.$} {unrun SILENT}
+#action {^Your mount refuses to follow your orders!$} {unrun SILENT}
+#action {^You are too exhausted to ride.$} {unrun SILENT}
+#action {^You can't go into deep water!$} {unrun SILENT}
+#action {^You don't control your mount!$} {unrun SILENT}
+#action {^Your mount is too sensible to attempt such a feat.$} {unrun SILENT}
+#action {^Scouting in that direction is impossible.$} {unrun SILENT}
+#action {^Scouting {north|south|east|west|up|down}wards is too difficult.$} {unrun SILENT}
+#action {^Oops! You cannot go there riding!$} {unrun SILENT}
+#action {^A {pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf}{( \(\w\))?} is too exhausted.$} {unrun SILENT}
+#action {^You'd better be swimming if you want to dive underwater.$} {unrun SILENT}
+#action {^You need to climb to go there.$} {unrun SILENT}
+#action {^You cannot climb there.$} {unrun SILENT}
+#action {^If you still want to try, you must 'climb' there.$} {unrun SILENT}
+#action { {prevents|keeps} you from going {north|south|east|west|up|down|upstairs|downstairs|past (him|her|it)}.$} {unrun SILENT}
 #action {^Nah... You feel too relaxed to do that.$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	};
+	unrun SILENT;
 	#send {stand}
 }
 #action {^Maybe you should get on your feet first?$} {
-	#if {"$attemptingMove" == "true"} {
-		#var {attemptingMove} {false};
-		mapUndo
-	};
+	unrun SILENT;
 	#send {stand}
 }
 
-
 #nop Forced unknown movement
+#action {^You can't seem to escape the roots!$} {notSynced}
 #action {^You are borne along by a strong current.$} {notSynced}
 #action {^You feel confused and move along randomly...$} {notSynced}
 #action {^You are swept away by the current.$} {notSynced}
@@ -233,23 +185,39 @@
 #action {^You reached the riverbank.$} {#delay {0.15} {sync}}
 #action {^At last Rivendell is within sight!$} {sync}
 
-#nop Forced known movement
-#nop #action {^Your feet slip, making you fall to the east!$} {east}
+#nop When the Mume server says the character has moved
+#action {^MOVEMENT:%1:MOVEMENT$} {
+	#if {"%1"!=""} {
+		#regexp {%1} {{north|south|east|west|up|down}} {#map move %1} {#echo {Unhandled direction: '%1'}}
+	};
+	#else {
+		notSynced
+	};
+	#line {gag}
+}
 
 #nop Store the current room name
-#action {~^\e[34;47;1;4m{[\w ,'-]+}\e[0m$} {
-	#var {attemptingMove} {false};
-	#var {roomName} {%1};
+#action {~^NAME:%1:NAME$} {
+	#echo {%s} {%1};
+	#line {strip} {
+		#if {("%1" == "You just see a dense fog around you...") || ("%1" == "It is pitch black...")} {
+			#var {roomName} {}
+		};
+		#else {
+			#var {roomName} {%1}
+		}
+	};
 	#if {"$isRunning" == "true"} {
 		#path {walk} {forward}
-	}
+	};
+	#line {gag}
 }
-#action {^{You just see a dense fog around you|It is pitch black}...$} {
-	#var {attemptingMove} {false};
-	#var {roomName} {};
-	#if {"$isRunning" == "true"} {
-		#path {walk} {forward}
-	}
+
+#nop Store the room description for possible future use
+#action {~^DESCRIPTION:%1:DESCRIPTION$} {
+	#echo {%s} {%1};
+	#line {strip} {#var {roomDesc} {%1}};
+	#line {gag}
 }
 
 #event {END OF PATH} {
@@ -261,5 +229,4 @@
 #var {roomName} {}
 #var {lastDestination} {}
 #var {isRunning} {false}
-#var {attemptingMove} {false}
 #var {isSynced} {false}

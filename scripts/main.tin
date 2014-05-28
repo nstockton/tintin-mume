@@ -48,6 +48,9 @@
 #PATHDIR          {u}  {d}  {16}
 #PATHDIR          {d}  {u}  {32}
 
+#nop The Mume proxy
+#read scripts/proxy.tin
+
 #nop Scripting languages
 #read scripts/python.tin
 
@@ -78,27 +81,32 @@
 #read scripts/sounds.tin
 
 #event {PROGRAM START} {
-	#session {mume} {193.134.218.99} {4242}
+	#session {mume} {127.0.0.1} {4000}
 }
 
 #event {SESSION DISCONNECTED} {
 	#if {"%0" == "mume"} {
 		#gts;
+		#proxy exit();
 		#python sounds.unload();
 		#python exit();
-		#end
+		#delay {0.5} {#end}
 	}
 }
 
 #action {^If you have never played MUME before, type NEW to create a new character,$} {
 	#python sounds.load();
 	xpReset;
+	#send {~$#EX1\n1};
 	#send {~$#EP2\nG}
 }
 #action {^{Reconnecting|Welcome to the land of Middle-earth\. May your visit here be\.\.\. interesting}.$} {
 	#send {\xFF\xFD\x01};
 	#map read maps/arda.map;
 	#map goto;
+	#send {spam off};
+	#send {brief on};
+	#send {compact on};
 	#send {info CHARNAME: %M.};
 	#send {time};
 	#send {info XPCOUNTER: %x %t %X %T.}

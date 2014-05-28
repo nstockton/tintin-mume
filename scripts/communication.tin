@@ -4,21 +4,32 @@ import communication
 
 #gts
 
-#action {~^\e[32m{(The voice of )?}%w {narrates|says|prays|tells you|tells the group|whispers to you[,]?|asks you} '%+'\e[0m$} {
-	#if {!&communicationIgnoreList[%3]} {
-		#if {"%4" == "whispers to you"} {#line {log} {communication/prays.txt}};
-		#elseif {("%4" != "narrates") && ("%4" != "says") && ("%4" != "prays")} {
-			#line {log} {communication/tells.txt};
-			#if {"%4" != "tells the group"} {#var {replyTo} {%3}};
-			playsound tells.wav
-		};
-		#else  {
-			#if {"%4" == "narrates"} {
-				playsound narrates.wav
-			};
-			#line {log} {communication/%4.txt}
+#nop Echo emotes for security
+#action {~^EMOTE:%1:EMOTE$} {
+	#echo {%s} {%1};
+	#line {gag}
+}
+
+#action {~^{TELL|SAY|NARRATE|PRAY}:%2:{TELL|SAY|NARRATE|PRAY}$} {
+	#echo {%s} {%2};
+	#line {strip} {
+		#regexp {%2} {^{(The voice of )?}%w {narrates|says|prays|tells you|tells the group|whispers to you} '%+'$} {
+			#if {!&communicationIgnoreList[&3]} {
+				#if {"%1" == "PRAY"} {#line {log} {communication/prays.txt} {&0}};
+				#elseif {"%1" == "SAY"} {#line {log} {communication/says.txt} {&0}};
+				#elseif {"%1" == "TELL"} {
+					#line {log} {communication/tells.txt} {&0};
+					#if {"&4" != "tells the group"} {#var {replyTo} {&3}};
+					playsound tells.wav
+				};
+				#elseif {"%1" == "NARRATE"} {
+					#line {log} {communication/narrates.txt} {&0};
+					playsound narrates.wav
+				}
+			}
 		}
-	}
+	};
+	#line {gag}
 }
 
 #alias {pl} {#python communication.review("prays", "%0")}
@@ -33,19 +44,19 @@ import communication
 
 #var {replyTo} {}
 
-#var communicationIgnoreList[Aldereon] {}
-#var communicationIgnoreList[Angdil] {}
-#var communicationIgnoreList[Barliman] {}
-#var communicationIgnoreList[Celebrindal] {}
-#var communicationIgnoreList[Ciryariel] {}
-#var communicationIgnoreList[Clint] {}
-#var communicationIgnoreList[Daegil] {}
-#var communicationIgnoreList[Ecthelion] {}
-#var communicationIgnoreList[Elrond] {}
-#var communicationIgnoreList[Erienal] {}
-#var communicationIgnoreList[Fardur] {}
-#var communicationIgnoreList[Galadriel] {}
-#var communicationIgnoreList[Grinder] {}
-#var communicationIgnoreList[Huor] {}
-#var communicationIgnoreList[Nordri] {}
-#var communicationIgnoreList[Sauron] {}
+#var communicationIgnoreList[Aldereon] {true}
+#var communicationIgnoreList[Angdil] {true}
+#var communicationIgnoreList[Barliman] {true}
+#var communicationIgnoreList[Celebrindal] {true}
+#var communicationIgnoreList[Ciryariel] {true}
+#var communicationIgnoreList[Clint] {true}
+#var communicationIgnoreList[Daegil] {true}
+#var communicationIgnoreList[Ecthelion] {true}
+#var communicationIgnoreList[Elrond] {true}
+#var communicationIgnoreList[Erienal] {true}
+#var communicationIgnoreList[Fardur] {true}
+#var communicationIgnoreList[Galadriel] {true}
+#var communicationIgnoreList[Grinder] {true}
+#var communicationIgnoreList[Huor] {true}
+#var communicationIgnoreList[Nordri] {true}
+#var communicationIgnoreList[Sauron] {true}
