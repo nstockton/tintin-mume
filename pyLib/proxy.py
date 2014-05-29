@@ -4,7 +4,7 @@ import re
 import socket
 import threading
 
-IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|magic|weather|room|exits|header|prompt|status|song|shout|yell|social|hit|damage|enemy|familiar|snoop.*?|highlight.*?)>")
+IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|magic|weather|room|exits|header|prompt|status|song|shout|yell|social|hit|damage|avoid_damage|enemy|familiar|snoop.*?|highlight.*?)>")
 SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
 MOVEMENT_TAGS_REGEX = re.compile(br"<(?P<tag>movement)( dir=(?P<text>north|south|east|west|up|down))?/>")
 
