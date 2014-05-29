@@ -82,6 +82,17 @@
 	#regexp {%1} {^{.{@math{@int{%2}-1}}}{.{@math{(@int{%3}-@int{%2}) + 1}}}} {#var {result} &2} {#var {result} {}}
 }
 
+#function {isvnum} {
+	#map {get} {roomvnum} {tmpIsVnum} {@int{%0}};
+	#if {($tmpIsVnum) && ("$tmpIsVnum" == "%0")} {
+		#var {result} {1}
+	};
+	#else {
+		#var {result} {0}
+	};
+	#unvar {tmpIsVnum}
+}
+
 #function {maplist} {
 	#var {result} {};
 	#switch {"%1"} {
