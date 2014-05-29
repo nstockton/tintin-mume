@@ -160,6 +160,10 @@
 }
 
 #nop Forced unknown movement
+#action {^#MAP: Unable to move to undefined exit!$} {
+	notSynced;
+	#line {gag}
+}
 #action {^You can't seem to escape the roots!$} {notSynced}
 #action {^You are borne along by a strong current.$} {notSynced}
 #action {^You feel confused and move along randomly...$} {notSynced}
@@ -187,8 +191,8 @@
 
 #nop When the Mume server says the character has moved
 #action {^MOVEMENT:%1:MOVEMENT$} {
-	#if {"%1"!=""} {
-		#regexp {%1} {{north|south|east|west|up|down}} {#map move %1} {#echo {Unhandled direction: '%1'}}
+	#if {("%1"!="") && ("$isSynced" == "true")} {
+		#regexp {%1} {{north|south|east|west|up|down}} {#map move %1} {#echo {Unhandled direction: '%1'};notSynced}
 	};
 	#else {
 		notSynced
