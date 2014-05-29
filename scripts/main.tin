@@ -98,9 +98,14 @@
 	#python sounds.load();
 	xpReset;
 	#send {~$#EX1\n1};
-	#send {~$#EP2\nG}
+	#send {~$#EP2\nG};
+	#delay {0.02} {#echo {By what name do you wish to be known? \}}
+}
+#action {^By what name do you wish to be known? $} {
+	#line {gag}
 }
 #action {^{Reconnecting|Welcome to the land of Middle-earth\. May your visit here be\.\.\. interesting}.$} {
+	#unaction {^By what name do you wish to be known? $}
 	#send {\xFF\xFD\x01};
 	#map read maps/arda.map;
 	#map goto;
