@@ -90,7 +90,8 @@
 		#case {"desc"} {#map {list} {variable} {result} {} {} {%2}};
 		#case {"area"} {#map {list} {variable} {result} {} {} {} {%2}};
 		#case {"note"} {#map {list} {variable} {result} {} {} {} {} {%2}};
-		#case {"terrain"} {#map {list} {variable} {result} {} {} {} {} {} {%2}}
+		#case {"terrain"} {#map {list} {variable} {result} {} {} {} {} {} {%2}};
+		#case {"flags"} {#map {list} {variable} {result} {} {} {} {} {} {} {%2}}
 	}
 }
 
