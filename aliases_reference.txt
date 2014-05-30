@@ -63,13 +63,16 @@ ttm - target *man*
 tto - target *orc*
 ttr - target *troll*
 
+Labels Script:
+rlabel [add [label] [room ID]|delete {label]|information [label]] - Handles room labels. (Commands can be abbreviated)
+
 Mapper Script:
 mapreload - Reloads the map file. (useful if you wish to discard changes you might have made to the map file since the last save)
 mapsave - Saves your changes to the map file.
 rinfo [room ID] - returns detailed information about the room with the given ID.  If no ID is supplied, will return information about the room that the mapper thinks you are currently in.
 rfind [c|string] - performs a case-insensitive, fuzzy search for rooms that contain string in their names. If  'c' is supplied instead of a string, will perform an case-sensitive, exact search for the last captured room name from the game. It is important to use this command to make sure there are no other rooms with the same name as the current one before syncing with the 'sync' command.
 rnote [room ID] [none|text] - If a room ID is given as the first argument, the operation will be performed on the room with that ID; otherwise, the current room will be used. If the word 'none' is given instead of some text, the room's note will be deleted; otherwise, the room's note will be set to the given text. If no text is given, the room's note will be displayed.
-run [n[ note]|c|numeric room ID|string] - start automatically walking from your current location to a destination. If the argument is a numeric room ID, will run to the room with the given ID.  If 'c' is given, will recalculate a new route to your previous destination and start running. If 'n' and some text are given, the destination will be set to the room which contains a note matching text. If neither a numeric room ID, 'c', or 'n' are given, will perform a case-insensitive, fuzzy search for room names that match string, and start running to the first result.
+run [l[ label]|n[ note]|c|i [room ID]|string] - start automatically walking from your current location to a destination. If 'i' and a room ID are given, will run to the room with the given ID.  If 'c' is given, will recalculate a new route to your previous destination and start running. If 'l' and some text are given, the destination will be set to the room with the corresponding label. If 'n' and some text are given, the destination will be set to the room which contains a note matching text. If neither 'i', 'c', 'l', or 'n' are given, will perform a case-insensitive, fuzzy search for room names that match string, and start running to the first result.
 unrun - If you are currently running, will stop.
 sync - Sets your location in the map to the last captured room name from the game. Make sure to use this command as soon as possible after logging on, and only use it in a room with a unique name.  If you are unsure if the current room name is unique, use 'rfind c'.
 

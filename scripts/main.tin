@@ -77,6 +77,7 @@
 
 #nop Scripts that require Python
 #read scripts/communication.tin
+#read scripts/labels.tin
 #read scripts/secrets.tin
 #read scripts/sounds.tin
 

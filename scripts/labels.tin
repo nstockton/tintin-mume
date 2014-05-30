@@ -1,0 +1,34 @@
+#python
+
+import labels
+
+#gts
+
+#alias {doLabel} {
+	#python labels.doLabel("%1", "%2")
+}
+
+#alias {rlabel} {
+	#if {("%0" != "") && (@startswith{{add}{%1}})} {
+		#if {"%3" != ""} {
+			#python labels.add("%2", "%3")
+		};
+		#elseif {"$isSynced" == "true"} {
+			#map {get} {roomvnum} {tmpRoomVnum};
+			#python labels.add("%2", "$tmpRoomVnum");
+			#unvar {tmpRoomVnum}
+		};
+		#else {
+			#echo {Can not add label to current room: Either 'sync' or supply a VNum.}
+		}
+	};
+	#elseif {("%0" != "") && (@startswith{{delete}{%1}})} {
+		#python labels.delete("%2")
+	};
+	#elseif {("%0" != "") && (@startswith{{information}{%1}})} {
+		#python labels.info("%2")
+	};
+	#else {
+		#echo {Syntax: rlabel [add [label] [room ID]|delete [label]|information [label]] - Commands can be abbreviated.}
+	}
+}

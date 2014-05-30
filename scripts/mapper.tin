@@ -104,6 +104,22 @@
 			#echo {You need to supply some note text to find.}
 		}
 	};
+	#elseif {"%1" == "i"} {
+		#if {@isvnum{%2}} {
+			#path {load} {};
+			#echo {Starting trip.};
+			#var {lastDestination} {@int{%2}};
+			#map {find} {$lastDestination};
+			#var {isRunning} {true};
+			#path {walk} {forward}
+		};
+		#else {
+			#echo {Error: Invalid room ID!}
+		}
+	};
+	#elseif {"%1" == "l"} {
+		doLabel {%2} {run i}
+	};
 	#elseif {"$tmpLocation" != ""} {
 		#regexp {$tmpLocation} {^%d$} {} {#var {tmpLocation} {%*%i$tmpLocation%*}};
 		#var {tmpResults} {@maplist{{name}{$tmpLocation}}};

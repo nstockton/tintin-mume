@@ -1,4 +1,4 @@
-Use 'run n label' to go to the room which contains a note matching label.
+Use 'run l <label>' to run to any of these rooms.
 
 Label: Room
 bbt: Secluded Valley (Bill, Bert, and Tom. Secret door down to enter is tangle. Sometimes FGC loads in that room.)
