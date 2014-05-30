@@ -14,10 +14,17 @@ def info(label=""):
 	global labels
 	label = label.strip().lower()
 	if not label:
-		return TinTin.echo("Error! You must specify a label.", "mume")
+		TinTin.echo("Error! You must specify a label.", "mume")
+	elif "all".startswith(label):
+		if labels:
+			for key, value in labels.iteritems():
+				TinTin.echo("%s: %s" % (key, value), "mume")
+		else:
+			TinTin.echo("There aren't any labels in the database yet.", "mume")
 	elif label not in labels:
-		return TinTin.echo("There aren't any labels matching '%s' in the database." % label, "mume")
-	TinTin.echo("Label '%s' points to room '%s'." % (label, labels[label]), "mume")
+		TinTin.echo("There aren't any labels matching '%s' in the database." % label, "mume")
+	else:
+		TinTin.echo("Label '%s' points to room '%s'." % (label, labels[label]), "mume")
 
 def doLabel(label="", action=""):
 	global labels

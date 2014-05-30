@@ -29,6 +29,6 @@ import labels
 		#python labels.info("%2")
 	};
 	#else {
-		#echo {Syntax: rlabel [add [label] [room ID]|delete [label]|information [label]] - Commands can be abbreviated.}
+		#echo {Syntax: rlabel [add [label] [room ID]|delete [label]|information [label|all]] - Commands can be abbreviated.}
 	}
 }

@@ -64,7 +64,7 @@ tto - target *orc*
 ttr - target *troll*
 
 Labels Script:
-rlabel [add [label] [room ID]|delete {label]|information [label]] - Handles room labels. (Commands can be abbreviated)
+rlabel [add [label] [room ID]|delete [label]|information [label|all]] - Handles room labels. (Commands can be abbreviated)
 
 Mapper Script:
 mapreload - Reloads the map file. (useful if you wish to discard changes you might have made to the map file since the last save)
