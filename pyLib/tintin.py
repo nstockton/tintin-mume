@@ -1,7 +1,7 @@
 class TinTin(object):
 	@staticmethod
 	def execute(command, session="gts"):
-		print "tintin_execute(%s) %s" % (session, command)
+		print "tintin_execute (%s) %s" % (session, command)
 
 	@staticmethod
 	def ticker(name, command, seconds, session="gts"):
