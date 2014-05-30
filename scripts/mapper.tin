@@ -1,8 +1,15 @@
 #alias {mapreload} {
-	#map {read} {maps/arda.map};
-	#map {goto} {1};
-	#echo {Map file reloaded.};
-	notSynced
+	#script {tmpMapFile} {if [ -s "maps/arda.map" ]; then echo "maps/arda.map"; elif [ -s "maps/arda.map.sample" ]; then echo "maps/arda.map.sample"; else echo "NONE"; fi};
+	#if {"$tmpMapFile[1]" == "NONE"} {
+		#echo {unable to find map file!}
+	};
+	#else {
+		#map {read} {$tmpMapFile[1]};
+		#map {goto} {1};
+		#echo {Map file '%s' reloaded.} {$tmpMapFile[1]};
+		notSynced
+	};
+	#unvar {tmpMapFile}
 }
 
 #alias {mapsave} {
