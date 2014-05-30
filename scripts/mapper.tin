@@ -1,3 +1,57 @@
+#alias {mapreload} {
+	#map {read} {maps/arda.map};
+	#map {goto} {1};
+	#echo {Map file reloaded.};
+	notSynced
+}
+
+#alias {mapsave} {
+	#map {write} {maps/arda.map};
+	#echo {Map file saved.}
+}
+
+#alias {rnote} {
+	#regex {%0} {^{\d+}%*$} {
+		#var {tmpRoomVnum} {&1};
+		#var {tmpNote} {@strip{&2}}
+	}
+	{
+		#if {"$isSynced" == "false"} {
+			#var {tmpRoomVnum} {notSynced}
+		};
+		#else {
+			#map {get} {roomvnum} {tmpRoomVnum}
+		};
+		#var {tmpNote} {@strip{%0}}
+	};
+	#if {"$tmpRoomVnum" == "notSynced"} {
+		#echo {Mapper not synced. Either 'sync' the map or provide a roomID as first argument.}
+	};
+	#elseif {!@isvnum{$tmpRoomVnum}} {
+		#echo {Invalid room ID.}
+	};
+	#elseif {"$tmpNote" == "none"} {
+		#map {set} {roomnote} {} {$tmpRoomVnum};
+		#echo {Note in room %s deleted.} {$tmpRoomVnum}
+	};
+	#elseif {"$tmpNote" != ""} {
+		#map {set} {roomnote} {$tmpNote} {$tmpRoomVnum};
+		#echo {Note in room %s now set to '%s'.} {$tmpRoomVnum} {$tmpNote}
+	};
+	#else {
+		#var {tmpNote} {};
+		#map {get} {roomnote} {tmpNote} {$tmpRoomVnum};
+		#if {"$tmpNote" != ""} {
+			#echo {Room %s has note '%s'.} {$tmpRoomVnum} {$tmpNote}
+		};
+		#else {
+			#echo {No note has been defined for room %s.} {$tmpRoomVnum}
+		}
+	};
+	#unvar {tmpRoomVnum};
+	#unvar {tmpNote}
+}
+
 #alias {notSynced} {
 	unrun SILENT;
 	#if {"$isSynced" == "true"} {
