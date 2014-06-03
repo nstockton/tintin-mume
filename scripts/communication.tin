@@ -60,3 +60,4 @@ import communication
 #var communicationIgnoreList[Huor] {true}
 #var communicationIgnoreList[Nordri] {true}
 #var communicationIgnoreList[Sauron] {true}
+#var communicationIgnoreList[Gramps] {true}
