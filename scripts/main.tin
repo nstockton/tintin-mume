@@ -98,6 +98,7 @@
 #action {^If you have never played MUME before, type NEW to create a new character,$} {
 	#python sounds.load();
 	xpReset;
+	#split {} {0};
 	#send {~$#EX1\n1};
 	#send {~$#EP2\nG};
 	#delay {0.02} {#echo {By what name do you wish to be known? \}}
@@ -117,3 +118,5 @@
 	#send {time};
 	#send {info XPCOUNTER: %x %t %X %T.}
 }
+
+#prompt {^PROMPT:%1:PROMPT$} {%1}
