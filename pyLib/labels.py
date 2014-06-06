@@ -1,10 +1,33 @@
+import os.path
 import yaml
 from tintin import TinTin
 
 DATABASE_FILE = "data/room_labels.yml"
+SAMPLE_DATABASE_FILE = "data/room_labels.yml.sample"
 
-with open(DATABASE_FILE, "rb") as data:
-	labels = yaml.safe_load(data)
+if os.path.exists(DATABASE_FILE):
+	if not os.path.isdir(DATABASE_FILE):
+		path = DATABASE_FILE
+	else:
+		TinTin.echo("Error: '%s' is a directory, not a file." % DATABASE_FILE, "python")
+elif os.path.exists(SAMPLE_DATABASE_FILE):
+	if not os.path.isdir(SAMPLE_DATABASE_FILE):
+		path = SAMPLE_DATABASE_FILE
+	else:
+		TinTin.echo("Error: '%s' is a directory, not a file." % SAMPLE_DATABASE_FILE, "python")
+else:
+	path = None
+	TinTin.echo("Error: neither '%s' nor '%s' can be found." % (DATABASE_FILE, SAMPLE_DATABASE_FILE), "mume")
+
+if not path:
+	labels = {}
+else:
+	try:
+		with open(path, "rb") as data:
+			labels = yaml.safe_load(data)
+	except IOError as e:
+		labels = {}
+		TinTin.echo("%s: '%s'" % (e.strerror, e.filename), "mume")
 
 def save():
 	with open(DATABASE_FILE, "wb") as data:
