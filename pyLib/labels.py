@@ -1,9 +1,9 @@
 import os.path
-import yaml
+import json
 from tintin import TinTin
 
-DATABASE_FILE = "data/room_labels.yml"
-SAMPLE_DATABASE_FILE = "data/room_labels.yml.sample"
+DATABASE_FILE = "data/room_labels.json"
+SAMPLE_DATABASE_FILE = "data/room_labels.json.sample"
 
 if os.path.exists(DATABASE_FILE):
 	if not os.path.isdir(DATABASE_FILE):
@@ -24,14 +24,17 @@ if not path:
 else:
 	try:
 		with open(path, "rb") as data:
-			labels = yaml.safe_load(data)
+			labels = json.load(data)
 	except IOError as e:
 		labels = {}
 		TinTin.echo("%s: '%s'" % (e.strerror, e.filename), "mume")
+	except ValueError as e:
+		labels = {}
+		TinTin.echo("Corrupted file: '%s'" % path, "mume")
 
 def save():
 	with open(DATABASE_FILE, "wb") as data:
-		yaml.safe_dump(labels, data, default_flow_style=False, indent=4, line_break="\r\n")
+		json.dump(labels, data, sort_keys=True, indent=2, separators=(",", ": "))
 
 def info(label=""):
 	global labels

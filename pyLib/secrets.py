@@ -1,9 +1,9 @@
 import os.path
-import yaml
+import json
 from tintin import TinTin
 
-DATABASE_FILE = "data/secret_exits.yml"
-SAMPLE_DATABASE_FILE = "data/secret_exits.yml.sample"
+DATABASE_FILE = "data/secret_exits.json"
+SAMPLE_DATABASE_FILE = "data/secret_exits.json.sample"
 
 if os.path.exists(DATABASE_FILE):
 	if not os.path.isdir(DATABASE_FILE):
@@ -24,17 +24,27 @@ if not path:
 else:
 	try:
 		with open(path, "rb") as data:
-			rooms = yaml.safe_load(data)
+			rooms = json.load(data)
 	except IOError as e:
 		rooms = {}
 		TinTin.echo("%s: '%s'" % (e.strerror, e.filename), "mume")
+	except ValueError as e:
+		rooms = {}
+		TinTin.echo("Corrupted file: '%s'" % path, "mume")
 
 validDirections = ["north", "south", "east", "west", "up", "down"]
 roomName = ""
 
+def uniq(lst):
+	last = object()
+	for item in lst:
+		if item != last:
+			yield item
+			last = item
+
 def save():
 	with open(DATABASE_FILE, "wb") as data:
-		yaml.safe_dump(rooms, data, default_flow_style=False, indent=4, line_break="\r\n")
+		json.dump(rooms, data, sort_keys=True, indent=2, separators=(",", ": "))
 
 def setRoomName(name=""):
 	global roomName
@@ -95,8 +105,8 @@ def add(newDoor="", newDirection=""):
 	elif currentRoom not in rooms:
 		rooms[currentRoom] = []
 	TinTin.echo("adding the door '%s' located '%s' to '%s'." % (newDoor, newDirection, currentRoom), "mume")
-	rooms[currentRoom].append((newDoor, newDirection))
-	rooms[currentRoom] = sorted(set(rooms[currentRoom]), key=lambda (door, direction): validDirections.index(direction) if direction in validDirections else 0)
+	rooms[currentRoom].append([newDoor, newDirection])
+	rooms[currentRoom] = list(uniq(sorted(rooms[currentRoom], key=lambda (door, direction): validDirections.index(direction) if direction in validDirections else 0)))
 	save()
 
 def delete(delDoor="", delDirection=""):
@@ -114,23 +124,23 @@ def delete(delDoor="", delDirection=""):
 	elif not delDoor or not delDirection:
 		return TinTin.echo("Syntax: ddel [door|all] [%s|all]" % "|".join(validDirections), "mume")
 	elif delDoor!="all" and delDirection!="all":
-		if (delDoor, delDirection) in rooms[currentRoom]:
+		if [delDoor, delDirection] in rooms[currentRoom]:
 			TinTin.echo("Deleting '%s' located '%s' from '%s'." % (delDoor, delDirection, currentRoom), "mume")
-			rooms[currentRoom].remove((delDoor, delDirection))
+			rooms[currentRoom].remove([delDoor, delDirection])
 		else:
 			return TinTin.echo("'%s' does not have any exits to the '%s' with the name '%s'." % (currentRoom, delDirection, delDoor), "mume")
 	elif delDirection != "all":
 		# Check to see if the current room has any secrets in the given direction.
-		if [(door, direction) for door, direction in rooms[currentRoom] if direction == delDirection]:
+		if [[door, direction] for door, direction in rooms[currentRoom] if direction == delDirection]:
 			TinTin.echo("Deleting all exits '%s' from '%s'." % (delDirection, currentRoom), "mume")
-			rooms[currentRoom] = [(door, direction) for door, direction in rooms[currentRoom] if direction != delDirection]
+			rooms[currentRoom] = [[door, direction] for door, direction in rooms[currentRoom] if direction != delDirection]
 		else:
 			return TinTin.echo("'%s' does not have any exits to the '%s'." % (currentRoom, delDirection), "mume")
 	elif delDoor != "all":
 		# Check to see if the current room has any secret doors with the given name.
-		if [(door, direction) for door, direction in rooms[currentRoom] if door == delDoor]:
+		if [[door, direction] for door, direction in rooms[currentRoom] if door == delDoor]:
 			TinTin.echo("Deleting all secret doors with the name '%s' from '%s'." % (delDoor, currentRoom), "mume")
-			rooms[currentRoom] = [(door, direction) for door, direction in rooms[currentRoom] if door != delDoor]
+			rooms[currentRoom] = [[door, direction] for door, direction in rooms[currentRoom] if door != delDoor]
 		else:
 			return TinTin.echo("'%s' does not have any secret doors called '%s'." % (currentRoom, delDoor), "mume")
 	if delDoor=="all" and delDirection=="all" or not rooms[currentRoom]:
