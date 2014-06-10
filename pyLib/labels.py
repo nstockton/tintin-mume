@@ -24,7 +24,7 @@ if not path:
 else:
 	try:
 		with open(path, "rb") as data:
-			labels = json.load(data)
+			labels = json.load(data, encoding="UTF-8")
 	except IOError as e:
 		labels = {}
 		TinTin.echo("%s: '%s'" % (e.strerror, e.filename), "mume")
@@ -34,7 +34,7 @@ else:
 
 def save():
 	with open(DATABASE_FILE, "wb") as data:
-		json.dump(labels, data, sort_keys=True, indent=2, separators=(",", ": "))
+		json.dump(labels, data, sort_keys=True, indent=2, separators=(",", ": "), encoding="UTF-8")
 
 def info(label=""):
 	global labels

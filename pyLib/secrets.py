@@ -24,7 +24,7 @@ if not path:
 else:
 	try:
 		with open(path, "rb") as data:
-			rooms = json.load(data)
+			rooms = json.load(data, encoding="UTF-8")
 	except IOError as e:
 		rooms = {}
 		TinTin.echo("%s: '%s'" % (e.strerror, e.filename), "mume")
@@ -44,7 +44,7 @@ def uniq(lst):
 
 def save():
 	with open(DATABASE_FILE, "wb") as data:
-		json.dump(rooms, data, sort_keys=True, indent=2, separators=(",", ": "))
+		json.dump(rooms, data, sort_keys=True, indent=2, separators=(",", ": "), encoding="UTF-8")
 
 def setRoomName(name=""):
 	global roomName
