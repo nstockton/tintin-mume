@@ -17,16 +17,18 @@ class ProxyThread(threading.Thread):
 		self.isServer = type=="server"
 		self.isClient = type=="client"
 
+	def upperMatch(self, match):
+		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") != b"prompt" else b""))
+
 	def run(self):
-		upperMatch = lambda match: b"".join((match.group("tag").upper(), b":", match.group("text").strip().replace(b"\r\n", b" ") if match.group("text") else "", b":", match.group("tag").upper(), b"\r\n"))
 		while True:
 			bytes = self._reader.recv(4096)
 			if not bytes:
 				break
 			elif self.isServer:
 				bytes = IGNORE_TAGS_REGEX.sub(b"", bytes)
-				bytes = SEPARATE_TAGS_REGEX.sub(upperMatch, bytes)
-				bytes = MOVEMENT_TAGS_REGEX.sub(upperMatch, bytes)
+				bytes = SEPARATE_TAGS_REGEX.sub(self.upperMatch, bytes)
+				bytes = MOVEMENT_TAGS_REGEX.sub(self.upperMatch, bytes)
 				bytes = b"\r\n".join([line for line in bytes.splitlines() if line]).replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
 			self._writer.send(bytes)
 
