@@ -108,6 +108,7 @@
 #action {^{Reconnecting|Welcome to the land of Middle-earth\. May your visit here be\.\.\. interesting}.$} {
 	#unaction {^By what name do you wish to be known? $}
 	#send {\xFF\xFD\x01};
+	#split {0} {-1};
 	#script {if [ -s "maps/arda.map" ]; then echo "#map {read} {maps/arda.map}"; elif [ -s "maps/arda.map.sample" ]; then echo "#map {read} {maps/arda.map.sample}"; else echo "#echo {unable to find map file\!}"; fi};
 	#map goto;
 	#send {spam off};
@@ -118,7 +119,4 @@
 	#send {info XPCOUNTER: %x %t %X %T.}
 }
 
-#action {^PROMPT:%1:PROMPT$} {
-	#echo {{%1} {0}};
-	#line {gag}
-}
+#prompt {^PROMPT:%1:PROMPT$} {%1} {0}
