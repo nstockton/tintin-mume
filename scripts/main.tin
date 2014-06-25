@@ -70,6 +70,7 @@
 #read scripts/path_walker.tin
 #read scripts/reenter.tin
 #read scripts/report.tin
+#read scripts/spell_timers.tin
 #read scripts/spell_translate.tin
 #read scripts/time.tin
 #read scripts/utils.tin

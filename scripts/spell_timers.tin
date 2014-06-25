@@ -1,0 +1,152 @@
+#alias {spellTimerSet} {
+	#format {spellTimers[%0]} {%T}
+}
+
+#alias {spellTimerStatus} {
+	#if {&spellTimers[%0]} {
+		#format {tmpSpellTimerEpoch} {%T};
+		#echo {%n up for %m minutes, %m seconds.} {%0} {($tmpSpellTimerEpoch-$spellTimers[%0]) / 60} {($tmpSpellTimerEpoch-$spellTimers[%0]) % 60};
+		#unvar {tmpSpellTimerEpoch}
+	};
+	#else {
+		#echo {%s} {%0}
+	}
+}
+
+#alias {spellTimerUnset} {
+	spellTimerStatus %0;
+	#if {&spellTimers[%0]} {
+		#unvar {spellTimers[%0]}
+	}
+}
+
+#action {^A blue transparent wall slowly appears around you.$} {spellTimerSet armour}
+#action {^Your magic armour is revitalized.$} {spellTimerSet armour}
+#action {^You feel less protected.$} {spellTimerUnset armour}
+#action {^- armour$} {
+	spellTimerStatus armour;
+	#line {gag}
+}
+
+#action {^You begin to feel the light of Aman shine upon you.$} {spellTimerSet bless}
+#action {^You feel a renewed light shine upon you.$} {spellTimerSet bless}
+#action {^The light of Aman fades away from you.$} {spellTimerUnset bless}
+#action {^- bless$} {
+	spellTimerStatus bless;
+	#line {gag}
+}
+
+#action {^You feel protected.$} {spellTimerSet shield}
+#action {^Your protection is revitalized.$} {spellTimerSet shield}
+#action {^Your magical shield wears off.$} {spellTimerUnset shield}
+#action {^- shield$} {
+	spellTimerStatus shield;
+	#line {gag}
+}
+
+#action {^You feel stronger.$} {spellTimerSet strength}
+#action {^The duration of the strength spell has been improved.$} {spellTimerSet strength}
+#action {^You feel weaker.$} {spellTimerUnset strength}
+#action {^- strength$} {
+	spellTimerStatus strength;
+	#line {gag}
+}
+
+#action {^You are surrounded by a misty shroud.$} {spellTimerSet shroud}
+#action {^Your misty shroud is renewed.$} {spellTimerSet shroud}
+#action {^You feel yourself exposed.$} {spellTimerUnset shroud}
+#action {^- shroud$} {
+	spellTimerStatus shroud;
+	#line {gag}
+}
+
+#action {^You feel your awareness improve.$} {spellTimerSet sense life}
+#action {^Your awareness is refreshed.$} {spellTimerSet sense life}
+#action {^You feel less aware of your surroundings.$} {spellTimerUnset sense life}
+#action {^- sense life$} {
+	spellTimerStatus sense life;
+	#line {gag}
+}
+
+#action {^An energy begins to flow within your legs as your body becomes lighter.$} {spellTimerSet breath of briskness}
+#action {^The energy in your legs is refreshed.$} {spellTimerSet breath of briskness}
+#action {^Your legs feel heavier.$} {spellTimerUnset breath of briskness}
+#action {^- breath of briskness$} {
+	spellTimerStatus breath of briskness;
+	#line {gag}
+}
+
+#action {^You start glowing.$} {spellTimerSet sanctuary}
+#action {^Your aura glows more intensely.$} {spellTimerSet sanctuary}
+#action {^The white aura around your body fades.$} {spellTimerUnset sanctuary}
+#action {^- sanctuary$} {
+	spellTimerStatus sanctuary;
+	#line {gag}
+}
+
+#action {^You have a righteous feeling!$} {spellTimerSet protection from evil}
+#action {^You feel a renewed righteousness.$} {spellTimerSet protection from evil}
+#action {^You feel less righteous.$} {spellTimerUnset protection from evil}
+#action {^- protection from evil$} {
+	spellTimerStatus protection from evil;
+	#line {gag}
+}
+
+#action {^You feel aware of all that is foul and evil.$} {spellTimerSet detect evil}
+#action {^Your awareness of evil is refreshed.$} {spellTimerSet detect evil}
+#action {^You sense the red in your vision disappear.$} {spellTimerUnset detect evil}
+#action {^- detect evil$} {
+	spellTimerStatus detect evil;
+	#line {gag}
+}
+
+#action {^You become sensitive of magical auras.$} {spellTimerSet detect magic}
+#action {^Your awareness of magical auras is renewed.$} {spellTimerSet detect magic}
+#action {^Your perception of magical auras wears off.$} {spellTimerUnset detect magic}
+#action {^- detect magic$} {
+	spellTimerStatus detect magic;
+	#line {gag}
+}
+
+#action {^Your eyes tingle.$} {spellTimerSet night vision}
+#action {^Your night vision is refreshed.$} {spellTimerSet night vision}
+#action {^Your vision blurs.$} {spellTimerUnset night vision}
+#action {^- night vision$} {
+	spellTimerStatus night vision;
+	#line {gag}
+}
+
+#action {^You feel your muscles relax and your pulse slow as the strength that welled within you subsides.$} {spellTimerSet tiredness}
+#action {^You feel your muscles regain some of their former energy.$} {spellTimerUnset tiredness}
+#action {^- tiredness$} {
+	spellTimerStatus tiredness;
+	#line {gag}
+}
+
+#action {^You feel a sudden flash of dizziness causing you to pause before getting your directional bearings back.$} {spellTimerSet haggardness}
+#action {^You feel steadier now.$} {spellTimerUnset haggardness}
+#action {^- haggardness$} {
+	spellTimerStatus haggardness;
+	#line {gag}
+}
+
+#action {^You feel a sudden loss of energy as the power that once mingled with your own has now vanished.$} {spellTimerSet lethargy}
+#action {^You feel your magic energy coming back to you.$} {spellTimerUnset lethargy}
+#action {^- lethargy$} {
+	spellTimerStatus lethargy;
+	#line {gag}
+}
+
+#action {^You have been blinded!$} {spellTimerSet blindness}
+#action {^You feel a cloak of blindness dissolve.$} {spellTimerUnset blindness}
+#action {^- blindness$} {
+	spellTimerStatus blindness;
+	#line {gag}
+}
+
+#action {^Hearing the horn blow, you feel your urge to battle increase!$} {spellTimerSet battleglory}
+#action {^You feel your newfound strength leaving you again.$} {spellTimerUnset battleglory}
+#action {^- battleglory$} {
+	spellTimerStatus battleglory;
+	#line {gag}
+}
