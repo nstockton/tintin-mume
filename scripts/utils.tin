@@ -26,6 +26,10 @@
 	#format {result} {%n} {%0}
 }
 
+#function {epoch} {
+	#format {result} {%T}
+}
+
 #function {reverse} {
 	#format {result} {%r} {%0}
 }
