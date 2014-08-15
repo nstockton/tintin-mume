@@ -184,7 +184,7 @@
 #var months[21] {{name}{Ivanneth}}
 #var months[22] {{name}{Narbeleth}}
 #var months[23] {{name}{Hithui}}
-#var months[24] {{name}{Birithron}}
+#var months[24] {{name}{Girithron}}
 
 #var {current_month} {1}
 #var {current_month_name} {}
