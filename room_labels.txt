@@ -5,6 +5,7 @@ bbt: Secluded Valley (Bill, Bert, and Tom. Secret door down to enter is tangle. 
 bm: An Inlaid Stone Walkway (Entrance to Blue Mountains city)
 brolg: The Cracked Chamber (Good place to rest near RD if playing Dark side)
 bwb: Brandywine Bridge
+dell: A Secluded Dell (Weathertop, east is ranger that gives traveling quest)
 emoria: The Great Gates (Moria east gates)
 etbad: Outside the East Gate of Tharbad
 fangorn-ford: A Ford on River Limlight (Just inside Fangorn, this is the painless way to cross the river)
@@ -25,14 +26,15 @@ ntbad: Outside the North Gate of Tharbad
 oermgw: Old East Road Meets Greenway
 oie: Ost-in-Edhil's Gate
 rd: Top of a Steeply Sloping Path (Just inside of RD. To get here from outside, 'run' to 'seekspot', and 'seek Rivendell')
+rh: Eyot in the Isen (Rohan, inn for renting is 2s w, stable is s e.)
 sbree: South of Bree (Bree south gate)
-dell: A Secluded Dell (Weathertop, east is ranger that gives traveling quest)
 seekspot: High Moors (Seek in to rd from this spot)
 sfnost: Before the Gates of Fornost (Fornost south gate)
 smorthan: Greenway (1 room south of Morthan)
 sppi: At the Sign of the Prancing Pony (inn)
 stbad: Outside the South Gate of Tharbad
 tendrils: Dark Dreary Forest (Open secret door 'tendrils', and go down to enter the Troll Warrens. The mobs down are not aggressive towards BNs, but the troll mobs in this forest are.)
+throkrath: In Front of a Camp (Throkrath the Foreman is 2w of here. Lots of orc mobs to kill, and lots of dark EQ to take back to Lorien for citizenship.)
 wbree: West of Bree (Bree west gate)
 wfnost: West of the Wooden Gate (Fornost west gate)
 wford: West of the Ford in the Bruinen (End of the Great East Road near RD)
