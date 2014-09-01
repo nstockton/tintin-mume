@@ -33,6 +33,7 @@ sfnost: Before the Gates of Fornost (Fornost south gate)
 smorthan: Greenway (1 room south of Morthan)
 sppi: At the Sign of the Prancing Pony (inn)
 stbad: Outside the South Gate of Tharbad
+steppings: North of the Stepping Stones (Good place to run in dunland.)
 tendrils: Dark Dreary Forest (Open secret door 'tendrils', and go down to enter the Troll Warrens. The mobs down are not aggressive towards BNs, but the troll mobs in this forest are.)
 throkrath: In Front of a Camp (Throkrath the Foreman is 2w of here. Lots of orc mobs to kill, and lots of dark EQ to take back to Lorien for citizenship.)
 wbree: West of Bree (Bree west gate)
