@@ -112,9 +112,9 @@
 	#split {0} {-1};
 	#script {if [ -s "maps/arda.map" ]; then echo "#map {read} {maps/arda.map}"; elif [ -s "maps/arda.map.sample" ]; then echo "#map {read} {maps/arda.map.sample}"; else echo "#echo {unable to find map file\!}"; fi};
 	#map goto;
-	#send {spam off};
-	#send {brief on};
-	#send {compact on};
+	#send {change spam off};
+	#send {change brief on};
+	#send {change compact on};
 	#send {info CHARNAME: %M.};
 	#send {time};
 	#send {info XPCOUNTER: %x %t %X %T.}

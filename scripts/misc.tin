@@ -1,7 +1,7 @@
 #action {^You have been idle, and are pulled into a void.$} {#send {wake\nstand\nlead\ntrain all}}
 #action {^ACK! %1 didn't follow you, you lost {him|her|it}.$} {#bell}
 #action {^{You can\'t do this sitting\!|You can\'t concentrate enough while resting\.}$} {#send {stand}}
-#action {^Prompt set to None.$} {#send {prompt points}}
+#action {^Prompt set to None.$} {#send {change prompt points}}
 #action {^You can only gain one level at a time... Reduced experience.$} {#bell}
 #action {^Text will now be word wrapped.$} {#send {change wordwrap}}
 
