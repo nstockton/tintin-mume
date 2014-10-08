@@ -121,3 +121,6 @@
 }
 
 #prompt {^PROMPT:%1:PROMPT$} {%1} {0}
+
+#nop Gag blank lines.
+#gag {^{(?:[\s]*)}$}

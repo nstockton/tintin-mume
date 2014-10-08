@@ -29,7 +29,7 @@ class ProxyThread(threading.Thread):
 				bytes = IGNORE_TAGS_REGEX.sub(b"", bytes)
 				bytes = SEPARATE_TAGS_REGEX.sub(self.upperMatch, bytes)
 				bytes = MOVEMENT_TAGS_REGEX.sub(self.upperMatch, bytes)
-				bytes = b"\r\n".join([line for line in bytes.splitlines() if line]).replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
+				bytes = bytes.replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
 			self._writer.send(bytes)
 
 
