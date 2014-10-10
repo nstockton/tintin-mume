@@ -47,6 +47,7 @@ import communication
 #var communicationIgnoreList[Aldereon] {true}
 #var communicationIgnoreList[Angdil] {true}
 #var communicationIgnoreList[Barliman] {true}
+#var communicationIgnoreList[Celeborn] {true}
 #var communicationIgnoreList[Celebrindal] {true}
 #var communicationIgnoreList[Ciryariel] {true}
 #var communicationIgnoreList[Clint] {true}
