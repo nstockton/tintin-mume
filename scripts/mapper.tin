@@ -235,6 +235,10 @@
 	unrun SILENT;
 	#send {stand}
 }
+#action {^Not from your present position!$} {
+	unrun SILENT;
+	#send {stand}
+}
 
 #nop Forced unknown movement
 #action {^#MAP: Unable to move to undefined exit!$} {
