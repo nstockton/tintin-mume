@@ -49,8 +49,10 @@
 #PATHDIR          {d}  {u}  {32}
 
 #nop The Mume proxy
-#read scripts/proxy.tin
+#nop #read scripts/proxy.tin
 
+#nop The Mume mapper proxy
+#read scripts/mapperproxy.tin
 #nop Scripting languages
 #read scripts/python.tin
 
@@ -78,7 +80,7 @@
 
 #nop Scripts that require Python
 #read scripts/communication.tin
-#read scripts/labels.tin
+#nop #read scripts/labels.tin
 #read scripts/secrets.tin
 #read scripts/sounds.tin
 
@@ -89,7 +91,7 @@
 #event {SESSION DISCONNECTED} {
 	#if {"%0" == "mume"} {
 		#gts;
-		#proxy exit();
+		#mapper exit();
 		#python sounds.unload();
 		#python exit();
 		#delay {0.5} {#end}
