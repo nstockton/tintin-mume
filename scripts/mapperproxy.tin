@@ -1,0 +1,15 @@
+#run {mapper} {python3 -B}
+
+import sys
+
+sys.path.append("./pyLib")
+
+from tintin import TinTin
+
+#read scripts/scripting.tin
+
+import mapper
+
+#gts
+
+#mapper mapper.main()
