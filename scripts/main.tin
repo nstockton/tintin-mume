@@ -65,7 +65,7 @@
 #read scripts/doors.tin
 #read scripts/hunting.tin
 #read scripts/grouping.tin
-#read scripts/mapper.tin
+#nop #read scripts/mapper.tin
 #read scripts/misc.tin
 #read scripts/path_walker.tin
 #read scripts/reenter.tin
@@ -110,8 +110,8 @@
 	#unaction {^By what name do you wish to be known? $}
 	#send {\xFF\xFD\x01};
 	#split {0} {-1};
-	#script {if [ -s "maps/arda.map" ]; then echo "#map {read} {maps/arda.map}"; elif [ -s "maps/arda.map.sample" ]; then echo "#map {read} {maps/arda.map.sample}"; else echo "#echo {unable to find map file\!}"; fi};
-	#map goto;
+	#nop #script {if [ -s "maps/arda.map" ]; then echo "#map {read} {maps/arda.map}"; elif [ -s "maps/arda.map.sample" ]; then echo "#map {read} {maps/arda.map.sample}"; else echo "#echo {unable to find map file\!}"; fi};
+	#nop #map goto;
 	#send {change spam off};
 	#send {change brief on};
 	#send {change compact on};
