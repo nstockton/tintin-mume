@@ -329,7 +329,7 @@ class Mapper(threading.Thread):
 		else:
 			vnum = args[0].strip()
 		if vnum in self.labels:
-			vnum = labels[vnum]
+			vnum = self.labels[vnum]
 		if vnum in self.rooms:
 			room = self.rooms[vnum]
 		else:
