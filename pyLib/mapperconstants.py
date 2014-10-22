@@ -40,6 +40,7 @@ AVOID_DYNAMIC_DESC_REGEX = re.compile(r"Some roots lie here waiting to ensnare w
 
 MOVEMENT_PREVENTED_REGEX = re.compile("^%s$" % "|".join([
 			r"The \w+ seem[s]? to be closed\.",
+			r"It seems to be locked\.",
 			r"You cannot ride there\.",
 			r"Your boat cannot enter this place\.",
 			r"A guard steps in front of you\.",
@@ -116,6 +117,7 @@ AVOID_VNUMS = [
 	"7750",
 	"7760",
 	"7761",
+	"11691",
 	"16650",
 	"16713",
 	"17534",

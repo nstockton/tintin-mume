@@ -50,6 +50,7 @@ class Room(object):
 		# We'll return False because we want heapq.heappush to sort the tuples of movement cost and room object by the first item in the tuple (room cost), and the order of rooms with the same movement cost is irrelevant.
 		return False
 
+
 class Exit(object):
 	def __init__(self):
 		self.to = ""
@@ -289,6 +290,11 @@ class Mapper(threading.Thread):
 				while currentRoomObj != origin:
 					currentRoomObj, direction = parents[currentRoomObj]
 					self.pathFindResult.append(direction)
+					if "door" in currentRoomObj.exits[direction].exitFlags:
+						if currentRoomObj.exits[direction].door:
+							self.pathFindResult.append("open {0} {1}".format(currentRoomObj.exits[direction].door, direction))
+						else:
+							self.pathFindResult.append("open {0} {1}".format("exit", direction))
 				break
 			# If we're here, the current room isn't the destination.
 			# Loop through the exits, and process each room linked to the current room.
@@ -319,7 +325,11 @@ class Mapper(threading.Thread):
 
 	def walkNextDirection(self):
 		if self.pathFindResult:
-			self.serverSend(self.pathFindResult.pop())
+			command = self.pathFindResult.pop()
+			while command not in DIRECTIONS:
+				self.serverSend(command)
+				command = self.pathFindResult.pop()
+			self.serverSend(command)
 			if not self.pathFindResult:
 				self.proxySend("Arriving at destination.")
 
