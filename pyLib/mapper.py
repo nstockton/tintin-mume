@@ -137,30 +137,25 @@ class Mapper(threading.Thread):
 		self.proxySend("Map database loaded.")
 
 	def loadLabels(self):
-		if os.path.exists(LABELS_FILE):
-			if not os.path.isdir(LABELS_FILE):
-				path = LABELS_FILE
+		def getLabels(fileName):
+			if os.path.exists(fileName):
+				if not os.path.isdir(fileName):
+					try:
+						with codecs.open(fileName, "rb", encoding="utf-8") as fileObj:
+							return json.load(fileObj)
+					except IOError as e:
+						self.proxySend("{0}: '{1}'".format(e.strerror, e.filename))
+						return {}
+					except ValueError as e:
+						self.proxySend("Corrupted labels database file: {0}".format(fileName))
+						return {}
+				else:
+					self.proxySend("Error: '{0}' is a directory, not a file.".format(fileName))
+					return {}
 			else:
-				path = None
-				self.proxySend("Error: '{0}' is a directory, not a file.".format(LABELS_FILE))
-		elif os.path.exists(SAMPLE_LABELS_FILE):
-			if not os.path.isdir(SAMPLE_LABELS_FILE):
-				path = SAMPLE_LABELS_FILE
-			else:
-				path = None
-				self.proxySend("Error: '{0}' is a directory, not a file.".format(SAMPLE_LABELS_FILE))
-		if not path:
-			self.labels = {}
-			return self.proxySend("Error: neither '{0}' nor '{1}' can be found.".format(LABELS_FILE, SAMPLE_LABELS_FILE))
-		try:
-			with codecs.open(path, "rb", encoding="utf-8") as fileObj:
-				self.labels = json.load(fileObj)
-		except IOError as e:
-			self.labels = {}
-			return self.proxySend("{0}: '{1}'".format(e.strerror, e.filename))
-		except ValueError as e:
-			self.labels = {}
-			return self.proxySend("Corrupted labels database file.")
+				return {}
+		self.labels.update(getLabels(SAMPLE_LABELS_FILE))
+		self.labels.update(getLabels(LABELS_FILE))
 
 	def saveDatabase(self):
 		self.proxySend("Creating dict from room objects.")
