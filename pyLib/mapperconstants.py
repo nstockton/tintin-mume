@@ -22,6 +22,8 @@ SAMPLE_LABELS_FILE = "data/room_labels.json.sample"
 
 DIRECTIONS = ["north", "east", "south", "west", "up", "down"]
 
+RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
+
 USER_COMMANDS_REGEX = re.compile(br"^(?P<command>rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?")
 
 IGNORE_TAGS_REGEX = re.compile(r"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
@@ -117,15 +119,26 @@ AVOID_VNUMS = [
 	"7750",
 	"7760",
 	"7761",
+	"10908",
+	"10909",
 	"11691",
 	"16650",
 	"16713",
 	"17534",
 	"17538",
+	"20764",
 	"20794",
 	"95125",
 	"96553",
 	"97407"
+]
+
+LEAD_BEFORE_ENTERING_VUNMS = [
+	"196",
+	"3473",
+	"3474",
+	"12138",
+	"12637"
 ]
 
 TERRAIN_COSTS = {

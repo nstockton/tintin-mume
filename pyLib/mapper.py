@@ -16,7 +16,7 @@ try:
 except ImportError:
 	import json
 
-from mapperconstants import IS_PYTHON_2, IS_PYTHON_3, IS_TINTIN, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, DIRECTIONS, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, AVOID_DYNAMIC_DESC_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, AVOID_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS
+from mapperconstants import IS_PYTHON_2, IS_PYTHON_3, IS_TINTIN, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, AVOID_DYNAMIC_DESC_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VUNMS, TERRAIN_COSTS, TERRAIN_SYMBOLS
 
 def iterItems(dictionary, **kw):
 	if IS_PYTHON_2:
@@ -243,25 +243,38 @@ class Mapper(threading.Thread):
 		"""Find the path"""
 		if not args or not args[0]:
 			return self.proxySend("Usage: run [label|vnum]")
-		else:
-			destination = args[0].strip()
 		self.pathFindResult = []
-		origin = self.currentRoom
-		if destination == "c":
+		argString = args[0].strip()
+		if argString == "c":
 			if self.lastPathFindQuery:
-				destination = self.lastPathFindQuery
-				self.proxySend("Continuing walking to vnum {0}.".format(self.lastPathFindQuery))
+				match = RUN_DESTINATION_REGEX.match(self.lastPathFindQuery)
+				destination = match.group("destination")
+				self.proxySend("Continuing walking to destination {0}.".format(destination))
 			else:
 				return self.proxySend("Error: no previous path to continue.")
-		elif destination in self.labels:
+		else:
+			match = RUN_DESTINATION_REGEX.match(argString)
+			destination = match.group("destination")
+		origin = self.currentRoom
+		flags = match.group("flags")
+		if flags:
+			flags = flags.split("|")
+		else:
+			flags = []
+		if destination in self.labels:
 			destination = self.labels[destination]
 		if destination and destination in self.rooms:
-			self.lastPathFindQuery = destination
 			destination = self.rooms[destination]
 		if not origin or not destination:
 			return self.proxySend("Error: Invalid origin or destination.")
-		elif origin == destination:
+		if origin == destination:
 			return self.proxySend("You are already there!")
+		if argString != "c":
+			self.lastPathFindQuery = argString
+		if flags:
+			avoidTerrains = [terrain for terrain in TERRAIN_COSTS if "no{0}".format(terrain) in flags]
+		else:
+			avoidTerrains = []
 		# Each key-value pare that gets added to this dict will be a parent room and child room respectively.
 		parents = {origin: origin}
 		# unprocessed rooms.
@@ -284,7 +297,11 @@ class Mapper(threading.Thread):
 				# find the path from the origin to the destination by traversing the rooms that we passed through to get here.
 				while currentRoomObj != origin:
 					currentRoomObj, direction = parents[currentRoomObj]
+					if currentRoomObj.vnum in LEAD_BEFORE_ENTERING_VUNMS and currentRoomObj.exits[direction].to not in LEAD_BEFORE_ENTERING_VUNMS and currentRoomObj != origin:
+						self.pathFindResult.append("ride")
 					self.pathFindResult.append(direction)
+					if currentRoomObj.exits[direction].to in LEAD_BEFORE_ENTERING_VUNMS and (currentRoomObj.vnum not in LEAD_BEFORE_ENTERING_VUNMS or currentRoomObj == origin):
+						self.pathFindResult.append("lead")
 					if "door" in currentRoomObj.exits[direction].exitFlags:
 						if currentRoomObj.exits[direction].door:
 							self.pathFindResult.append("open {0} {1}".format(currentRoomObj.exits[direction].door, direction))
@@ -303,6 +320,9 @@ class Mapper(threading.Thread):
 				neighborRoomCost = currentRoomCost + neighborRoomObj.cost
 				if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags:
 					neighborRoomCost += 5.0
+				if flags:
+					if neighborRoomObj.terrain in avoidTerrains:
+						neighborRoomCost += 10.0
 				# We're only interested in the neighbor room if it hasn't been encountered yet, or if the cost of moving from the current room to the neighbor room is less than the cost of moving to the neighbor room from a previously discovered room.
 				if neighborRoomObj not in closed or closed[neighborRoomObj] > neighborRoomCost:
 					# Add the room object and room cost to the dict of closed rooms, and put it on the opened rooms heap to be processed.
@@ -321,7 +341,7 @@ class Mapper(threading.Thread):
 	def walkNextDirection(self):
 		if self.pathFindResult:
 			command = self.pathFindResult.pop()
-			while command not in DIRECTIONS:
+			while command not in DIRECTIONS and self.pathFindResult:
 				self.serverSend(command)
 				command = self.pathFindResult.pop()
 			self.serverSend(command)
