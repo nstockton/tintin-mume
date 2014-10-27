@@ -70,7 +70,8 @@ MOVEMENT_PREVENTED_REGEX = re.compile("^%s$" % "|".join([
 			r"If you still want to try\, you must \'climb\' there\.",
 			r".+ (?:prevents|keeps) you from going (?:north|south|east|west|up|down|upstairs|downstairs|past (?:him|her|it))\.",
 			r"Nah\.\.\. You feel too relaxed to do that\.",
-			r"Maybe you should get on your feet first\?"
+			r"Maybe you should get on your feet first\?",
+			r"Not from your present position\!"
 		]
 	)
 )
