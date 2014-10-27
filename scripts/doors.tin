@@ -1,7 +1,6 @@
 #action {^The %w {is|are} {open|closed}.$} {#var {door_name} {%1}}
 #action {^You skillfully discover a hidden %w.$} {#var {door_name} {%1}}
 #action {^The %w {seem|seems} to be closed.$} {
-	#nop unrun SILENT;
 	#var {door_name} {%1};
 	#if {"$auto_open" == "on"} {#send {open $door_name}}
 }

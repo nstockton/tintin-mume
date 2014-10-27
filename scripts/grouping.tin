@@ -10,7 +10,6 @@
 	}
 }
 #action {^ZBLAM! A {pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf} {(\((\w+)\) )?}doesn't want you riding {him|her|it} anymore.$} {
-	#nop unrun SILENT;
 	#if {"$auto_ride" == "on"} {
 		#send {stand};
 		#if {"%4" != ""} {#send {lead %4\nride %4}};
