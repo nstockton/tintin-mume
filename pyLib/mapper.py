@@ -16,7 +16,7 @@ try:
 except ImportError:
 	import json
 
-from mapperconstants import IS_PYTHON_2, IS_PYTHON_3, IS_TINTIN, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, AVOID_DYNAMIC_DESC_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VUNMS, TERRAIN_COSTS, TERRAIN_SYMBOLS
+from mapperconstants import IS_PYTHON_2, IS_PYTHON_3, IS_TINTIN, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, AVOID_DYNAMIC_DESC_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS
 
 def iterItems(dictionary, **kw):
 	if IS_PYTHON_2:
@@ -297,10 +297,10 @@ class Mapper(threading.Thread):
 				# find the path from the origin to the destination by traversing the rooms that we passed through to get here.
 				while currentRoomObj != origin:
 					currentRoomObj, direction = parents[currentRoomObj]
-					if currentRoomObj.vnum in LEAD_BEFORE_ENTERING_VUNMS and currentRoomObj.exits[direction].to not in LEAD_BEFORE_ENTERING_VUNMS and currentRoomObj != origin:
+					if currentRoomObj.vnum in LEAD_BEFORE_ENTERING_VNUMS and currentRoomObj.exits[direction].to not in LEAD_BEFORE_ENTERING_VNUMS and currentRoomObj != origin:
 						self.pathFindResult.append("ride")
 					self.pathFindResult.append(direction)
-					if currentRoomObj.exits[direction].to in LEAD_BEFORE_ENTERING_VUNMS and (currentRoomObj.vnum not in LEAD_BEFORE_ENTERING_VUNMS or currentRoomObj == origin):
+					if currentRoomObj.exits[direction].to in LEAD_BEFORE_ENTERING_VNUMS and (currentRoomObj.vnum not in LEAD_BEFORE_ENTERING_VNUMS or currentRoomObj == origin):
 						self.pathFindResult.append("lead")
 					if "door" in currentRoomObj.exits[direction].exitFlags:
 						if currentRoomObj.exits[direction].door:
