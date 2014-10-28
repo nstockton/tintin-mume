@@ -1,0 +1,7 @@
+# Ignore everything in this directory
+*
+# Except this file
+!secret_exits.json.sample
+!room_labels.json.sample
+!emulation_config.json.sample
+!.gitignore

@@ -1,7 +1,7 @@
 ﻿import os
 import random
 
-from tintin import TinTin
+from .tintin import TinTin
 
 try:
 	from pygame import mixer

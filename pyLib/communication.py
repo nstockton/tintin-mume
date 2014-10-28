@@ -1,4 +1,4 @@
-from tintin import TinTin
+from .tintin import TinTin
 
 def review(channel, text=""):
 	try:

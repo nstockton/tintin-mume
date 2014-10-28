@@ -1,16 +1,7 @@
 import re
 import sys
 
-try:
-	import tintin
-except ImportError:
-	tintin = None
-
 IS_PYTHON_2 = sys.version_info[0] == 2
-
-IS_PYTHON_3 = sys.version_info[0] == 3
-
-IS_TINTIN = tintin is not None
 
 MAP_FILE = "maps/arda.json"
 
@@ -131,6 +122,8 @@ AVOID_VNUMS = [
 	"17903",
 	"20764",
 	"20794",
+	"34378",
+	"34402",
 	"95125",
 	"96553",
 	"97407"

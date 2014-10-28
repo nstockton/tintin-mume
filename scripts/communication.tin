@@ -1,6 +1,6 @@
 #python
 
-import communication
+from pyLib import communication
 
 #gts
 

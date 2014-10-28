@@ -1,6 +1,6 @@
 import os.path
 import json
-from tintin import TinTin
+from .tintin import TinTin
 
 DATABASE_FILE = "data/secret_exits.json"
 SAMPLE_DATABASE_FILE = "data/secret_exits.json.sample"

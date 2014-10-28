@@ -1,6 +1,6 @@
 #python
 
-import sounds
+from pyLib import sounds
 
 #gts
 
