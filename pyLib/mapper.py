@@ -243,11 +243,17 @@ def main(isTinTin=None):
 	proxyThread.start()
 	mapperThread.start()
 	serverThread.join()
-	serverConnection.shutdown(socket.SHUT_RDWR)
+	try:
+		serverConnection.shutdown(socket.SHUT_RDWR)
+	except:
+		pass
 	q.put((None, None))
 	mapperThread.join()
-	proxyConnection.sendall(b"\r\n")
-	proxyConnection.shutdown(socket.SHUT_RDWR)
+	try:
+		proxyConnection.sendall(b"\r\n")
+		proxyConnection.shutdown(socket.SHUT_RDWR)
+	except:
+		pass
 	proxyThread.join()
 	serverConnection.close()
 	proxyConnection.close()
