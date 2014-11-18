@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python2
+﻿#!/usr/bin/env python
 
 import codecs
 import itertools
@@ -20,7 +20,7 @@ class EmulatedWorld(World):
 	def __init__(self, **kwargs):
 		print("Loading the world database.")
 		World.__init__(self)
-		print("Loaded {0} rooms.".format(str(len(self.rooms))))
+		print("Loaded {0} rooms.".format(len(self.rooms)))
 		self.config = {}
 		self.configFile = "data/emulation_config.json"
 		self.sampleConfigFile = "data/emulation_config.json.sample"
@@ -31,28 +31,27 @@ class EmulatedWorld(World):
 			lastVnum = sorted(self.rooms)[0]
 		self.move(lastVnum)
 
-	def page(self, lines):
+	def output(self, text):
+		"""Use less to display text if the number of lines exceeds the terminal height or the print function if not."""
+		# Word wrapping to 1 less than the terminal width is necessary to prevent occasional blank lines in the terminal output.
+		lines = [textwrap.fill(line.strip(), self.width - 1) for line in text.splitlines() if line.strip()]
+		text = "\n".join(lines)
 		if len(lines) < self.height:
-			self.output("\n".join(lines))
+			print(text)
 		else:
 			less = subprocess.Popen("less", stdin=subprocess.PIPE)
-			less.stdin.write("\n".join(lines).encode("utf-8"))
+			less.stdin.write(text.encode("utf-8"))
 			less.stdin.close()
 			less.wait()
+		return None
 
 	def look(self):
-		"""What to do when the user types 'look', enters a new room, ETC"""
+		"""The 'look' command"""
 		self.output(self.currentRoom.name)
-		# If brief mode is disabled
+		# If brief mode is disabled, output the room description
 		if not self.config.get("brief", True):
-			# We need to strip any whitespace characters from the description lines, as well as filtering out any blank lines.
-			desc = [line.strip() for line in self.currentRoom.desc.splitlines() if line.strip()]
-			# We need to word wrap the description to 1 less than the terminal width, or else we will occasionally see blank lines in the description.
-			self.output(textwrap.fill(" ".join(desc), self.width-1))
-		for line in self.currentRoom.dynamicDesc.splitlines():
-			line = line.strip()
-			if line:
-				self.output(textwrap.fill(line, self.width-1))
+			self.output(" ".join([line.strip() for line in self.currentRoom.desc.splitlines() if line.strip()]))
+		self.output(self.currentRoom.dynamicDesc)
 		#loop through the list of exits in the current room, and build the doors/exits lines.
 		doorList = []
 		exitList = []
@@ -68,29 +67,29 @@ class EmulatedWorld(World):
 					# The door is a secret exit.
 					# Enclose the direction of the door in brackets '[]' for use in the exits line. In Mume, enclosing an exits line direction in brackets denotes a closed door in that direction.
 					direction = "[{0}]".format(direction)
-			# The next 2 are just convenience symbols for denoting if the exit is to an undefined room or a known deathtrap.  They aren't used in Mume. The '=' signs are used in Mume to denote that the room in that direction is a road though.
+			# The next 2 symbols which might be added are just convenience symbols for denoting if the exit is to an undefined room or a known deathtrap. They don't actually exist in Mume.
 			if exitObj.to == "death":
 				direction = "!!{0}!!".format(direction)
 			elif exitObj.to not in self.rooms or exitObj.to == "undefined":
 				direction = "??{0}??".format(direction)
 			elif self.rooms[exitObj.to].terrain == "road":
+				# The '=' sign is used in Mume to denote that the room in that direction is a road.
 				direction = "={0}=".format(direction)
 			elif "road" in exitObj.exitFlags:
+				# The '-' sign is used in Mume to denote that the room in that direction is a trail.
 				direction = "-{0}-".format(direction)
-			# Now that we are done manipulating the direction string, we'll add it to the exits list.
 			exitList.append(direction)
-		# If any of the exits had a door, print the direction and name of the door if applicable.
+		# If any of the exits had a door in that direction, print the direction and name of the door before the exits line.
 		if doorList:
 			self.output("Doors:")
 			self.output(",\n".join(doorList))
-		# print the exits line
 		if not exitList:
 			exitList.append("None!")
 		self.output("Exits: {0}".format(", ".join(exitList)))
 		if self.currentRoom.note:
 			self.output("Note: {0}".format(self.currentRoom.note))
-		# If the user has enabled the showing of room IDs in the configuration, print the room ID.
-		if self.config.get("show_id"):
+		# If the user has enabled the showing of room vnums in the configuration, print the room vnum.
+		if self.config.get("show_vnum", True):
 			self.output("Vnum: {0}".format(self.currentRoom.vnum))
 
 	def longExits(self):
@@ -112,6 +111,7 @@ class EmulatedWorld(World):
 			self.output(" ".join(exitLine))
 
 	def move(self, text):
+		"""Move to a given vnum, label, or in a given direction"""
 		if text in DIRECTIONS:
 			if text not in self.currentRoom.exits:
 				return self.output("Alas, you cannot go that way!")
@@ -129,19 +129,17 @@ class EmulatedWorld(World):
 			return self.output("Deathtrap in that direction!")
 		elif vnum not in self.rooms:
 			return self.output("The vnum ({0}) in that direction is not in the database.".format(vnum))
-		self.prevRoom = self.rooms[self.currentRoom.vnum]
 		self.currentRoom = self.rooms[vnum]
 		self.config["last_vnum"] = vnum
 		self.look()
 
 	def toggleSetting(self, setting):
-		"""This function handles configuration settings that can be toggled True/False"""
-		# Toggle the value and return the new state
+		"""Toggle configuration settings True/False"""
 		self.config[setting] = self.config.get(setting, True) == False
 		return self.config[setting]
 
 	def loadConfig(self):
-		# Load the configuration file.
+		"""Load the configuration file"""
 		def getConfig(fileName):
 			if os.path.exists(fileName):
 				if not os.path.isdir(fileName):
@@ -163,51 +161,51 @@ class EmulatedWorld(World):
 		self.config.update(getConfig(self.configFile))
 
 	def saveConfig(self):
-		"""Saves the configuration to disk"""
+		"""Save the configuration to disk"""
 		with codecs.open(self.configFile, "wb", "utf-8") as fileObj:
 			json.dump(self.config, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
 
 	def createSpeedWalk(self, directionsList):
-		def compressDirections(partialList):
-			partialResult = []
-			for key, value in itertools.groupby(partialList):
-				lenValue = len(list(value))
-				if lenValue == 1:
-					partialResult.append(key[0])
+		"""Given a list of directions, return a string of the directions in standard speed walk format"""
+		def compressDirections(directionsBuffer):
+			speedWalkDirs = []
+			for direction, group in itertools.groupby(directionsBuffer):
+				lenGroup = len(list(group))
+				if lenGroup == 1:
+					speedWalkDirs.append(direction[0])
 				else:
-					partialResult.append("{0}{1}".format(lenValue, key[0]))
-			return partialResult
+					speedWalkDirs.append("{0}{1}".format(lenGroup, direction[0]))
+			return speedWalkDirs
 		result = []
-		partialList = []
+		directionsBuffer = []
 		while directionsList:
 			item = directionsList.pop()
 			if item in DIRECTIONS:
-				partialList.append(item)
+				directionsBuffer.append(item)
 			else:
-				result.extend(compressDirections(partialList))
-				partialList = []
+				# The item is not a direction, so process the directions buffer, clear the buffer, and add the resulting list plus the item to the result.
+				result.extend(compressDirections(directionsBuffer))
+				directionsBuffer = []
 				result.append(item)
-		if partialList:
-			result.extend(compressDirections(partialList))
+		# Process any remaining items in the directions buffer.
+		if directionsBuffer:
+			result.extend(compressDirections(directionsBuffer))
 		return "; ".join(result)
 
-	def parseInput(self, *args):
-		"""Parses the user's input, and executes the appropriate command"""
-		if not args or not args[0]:
-			return
-		match = re.match(r"^(?P<command>\S+)(?:\s+(?P<arguments>.*))?", args[0].strip())
-		if not match:
-			return
+	def parseInput(self, userInput):
+		"""Parse the user input"""
+		match = re.match(r"^(?P<command>\S+)(?:\s+(?P<arguments>.*))?", userInput)
 		command = match.group("command")
 		arguments = match.group("arguments")
-		if [direction for direction in DIRECTIONS if direction.startswith(command)]:
-			self.move([direction for direction in DIRECTIONS if direction.startswith(command)][0])
+		direction = "".join([dir for dir in DIRECTIONS if dir.startswith(command)])
+		if direction:
+			self.move(direction)
 		elif "look".startswith(command):
 			self.look()
 		elif "exits".startswith(command):
 			self.longExits()
 		elif command == "vnum":
-			status = self.toggleSetting("show_id")
+			status = self.toggleSetting("show_vnum")
 			self.output("Show room vnum {0}.".format("enabled" if status else "disabled"))
 		elif command == "brief":
 			status = self.toggleSetting("brief")
@@ -232,31 +230,41 @@ class EmulatedWorld(World):
 		elif command == "rlabel":
 			result = self.rlabel(arguments)
 			if result:
-				self.page(result)
+				self.output("\n".join(result))
 		elif command == "rinfo":
-			self.page(self.rinfo(arguments))
+			self.output("\n".join(self.rinfo(arguments)))
 		elif command == "mapsave":
 			self.saveRooms()
 		elif command.isdigit() or command in self.labels:
 			self.move(command)
 		else:
-			self.output("Invalid command or direction!")
+			self.output("Arglebargle, glop-glyf!?!")
 
 
 def main():
 	print("Welcome to Mume Map Emulation!")
 	wld = EmulatedWorld()
 	while True:
-		# Indicate the current room's terrain in the prompt according to the setting of use_terrain_symbols in the configuration.
-		terrainSymbol = [symbol for symbol, terrain in iterItems(TERRAIN_SYMBOLS) if terrain == wld.currentRoom.terrain][0]
-		prompt = "{0}> ".format(terrainSymbol if wld.config.get("use_terrain_symbols") else wld.currentRoom.terrain)
+		prompt = "> "
+		# Indicate the current room's terrain in the prompt.
+		if not wld.config.get("use_terrain_symbols"):
+			prompt = wld.currentRoom.terrain + prompt
+		else:
+			for symbol, terrain in iterItems(TERRAIN_SYMBOLS):
+				if terrain == wld.currentRoom.terrain:
+					prompt = symbol + prompt
+					break
+		# For Python 2/3 compatibility:
 		try:
-			line = raw_input(prompt).strip().lower()
+			userInput = raw_input(prompt).strip().lower()
 		except NameError:
-			line = input(prompt).strip().lower()
-		if line and "quit".startswith(line):
-			# Break out of the loop, save the configuration to disk, and exit the program
+			userInput = input(prompt).strip().lower()
+		if not userInput:
+			continue
+		elif "quit".startswith(userInput):
 			break
-		wld.parseInput(line)
+		else:
+			wld.parseInput(userInput)
+	# The user has typed 'q[uit]'. Save the config file and exit.
 	wld.saveConfig()
 	print("Good bye.")
