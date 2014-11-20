@@ -50,7 +50,7 @@ class EmulatedWorld(World):
 		self.output(self.currentRoom.name)
 		# If brief mode is disabled, output the room description
 		if not self.config.get("brief", True):
-			self.output(" ".join([line.strip() for line in self.currentRoom.desc.splitlines() if line.strip()]))
+			self.output(" ".join(line.strip() for line in self.currentRoom.desc.splitlines() if line.strip()))
 		self.output(self.currentRoom.dynamicDesc)
 		#loop through the list of exits in the current room, and build the doors/exits lines.
 		doorList = []
@@ -197,7 +197,7 @@ class EmulatedWorld(World):
 		match = re.match(r"^(?P<command>\S+)(?:\s+(?P<arguments>.*))?", userInput)
 		command = match.group("command")
 		arguments = match.group("arguments")
-		direction = "".join([dir for dir in DIRECTIONS if dir.startswith(command)])
+		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(command))
 		if direction:
 			self.move(direction)
 		elif "look".startswith(command):

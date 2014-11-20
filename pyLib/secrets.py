@@ -97,7 +97,7 @@ def add(newDoor="", newDirection=""):
 	currentRoom = roomName
 	newDoor = newDoor.strip().lower()
 	newDirection = newDirection.strip().lower()
-	newDirection = "".join([dir for dir in validDirections if newDirection and dir.startswith(newDirection)])
+	newDirection = "".join(dir for dir in validDirections if newDirection and dir.startswith(newDirection))
 	if not currentRoom:
 		return TinTin.echo("Error!  Current room undefined.", "mume")
 	elif not newDoor or not newDirection:
@@ -116,7 +116,7 @@ def delete(delDoor="", delDirection=""):
 	currentRoom = roomName
 	delDoor = delDoor.strip().lower()
 	delDirection = delDirection.strip().lower()
-	delDirection = "".join([dir for dir in validDirections+["all"] if delDirection and dir.startswith(delDirection)])
+	delDirection = "".join(dir for dir in validDirections+["all"] if delDirection and dir.startswith(delDirection))
 	if not currentRoom:
 		return TinTin.echo("Error!  Room is undefined.", "mume")
 	elif currentRoom not in rooms:
