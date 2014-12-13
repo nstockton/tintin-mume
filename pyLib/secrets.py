@@ -99,7 +99,8 @@ class Secrets(object):
 			self.rooms[roomName] = []
 		TinTin.echo("adding the door '{0}' located '{1}' to '{2}'.".format(newDoor, newDirection, roomName), "mume")
 		self.rooms[roomName].append([newDoor, newDirection])
-		self.rooms[roomName] = list(self.uniq(sorted(self.rooms[roomName], key=lambda (door, direction): VALID_DIRECTIONS.index(direction) if direction in VALID_DIRECTIONS else 0)))
+		self.rooms[roomName].sort(key=lambda room: (VALID_DIRECTIONS.index(room[1]) if room[1] in VALID_DIRECTIONS else len(VALID_DIRECTIONS), room[0]))
+		self.rooms[roomName] = list(self.uniq(self.rooms[roomName]))
 		self.save()
 
 	def delete(self, roomName="", delDoor="", delDirection=""):
