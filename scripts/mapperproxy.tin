@@ -1,4 +1,4 @@
-#run {mapper} {python3 -B}
+#run {mapper} {python -B}
 
 from pyLib import mapper
 

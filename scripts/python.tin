@@ -1,4 +1,4 @@
-#run {python} {python2 -B}
+#run {python} {python -B}
 
 from pyLib.tintin import TinTin
 
