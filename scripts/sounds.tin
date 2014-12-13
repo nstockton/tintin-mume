@@ -1,6 +1,7 @@
 #python
 
 from pyLib import sounds
+sound = sounds.Sounds()
 
 #gts
 
@@ -42,9 +43,9 @@ from pyLib import sounds
 	playsound hidden.wav
 }
 
-#alias {playsound} {#python sounds.play("%0", "${volume}")}
-#alias {stopsound} {#python sounds.stop("%0")}
-#alias {mutesound} {#python sounds.mute()}
+#alias {playsound} {#python sound.play("%0", "${volume}")}
+#alias {stopsound} {#python sound.stop("%0")}
+#alias {mutesound} {#python sound.mute()}
 #alias {vol} {
 	#if {"%1" == "up"} {
 		#if {$volume < 81} {
