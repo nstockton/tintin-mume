@@ -88,14 +88,14 @@
 	#if {"%0" == "mume"} {
 		#gts;
 		#mapper exit();
-		#python sounds.unload();
+		#python sound.unload();
 		#python exit();
 		#delay {0.5} {#end}
 	}
 }
 
 #action {^If you have never played MUME before, type NEW to create a new character,$} {
-	#python sounds.load();
+	#python sound.load();
 	xpReset;
 	#send {~$#EX1\n1};
 	#send {~$#EP2\nG};
