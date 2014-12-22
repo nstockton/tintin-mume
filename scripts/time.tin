@@ -30,7 +30,7 @@
 		#else {#var {current_time} {12 am}}
 	};
 	#else {
-		#math {tmpDiffSeconds} {((@_timer{} - $difference) / 1000) % 60};
+		#math {tmpDiffSeconds} {((@_timer{} - $difference) / 1000000) % 60};
 		#if {$tmpDiffSeconds < 10} {#var {tmpDiffSecondsPretty} {0}};
 		#else {#var {tmpDiffSecondsPretty} {}};
 		#if {$current_hour < 12} {#var {current_time} {${current_hour}:${tmpDiffSecondsPretty}${tmpDiffSeconds} am}};
@@ -85,8 +85,8 @@
 }
 
 #function {_timer} {
-	#format {tmpEpoch} {%T};
-	#math {result} {($tmpEpoch - $init_timer) * 1000};
+	#format {tmpEpoch} {%U};
+	#math {result} {$tmpEpoch - $init_timer};
 	#unvar {tmpEpoch}
 }
 
@@ -115,7 +115,7 @@
 }
 
 #alias {_sync_precise} {
-	#math {difference} {@_timer{} - %2 * 1000};
+	#math {difference} {@_timer{} - %2 * 1000000};
 	#if {("%1" == "12") && ("%3" == "am")} {#var {current_hour} {24}};
 	#elseif {("%1" == "12") && ("%3" == "pm")} {#var {current_hour} {12}};
 	#elseif {"%3" == "am"} {#var {current_hour} {%1}};
@@ -159,7 +159,7 @@
 	#if {"%3" != ""} {_sync_precise %2 30 %3}
 }
 
-#format {init_timer} {%T}
+#format {init_timer} {%U}
 
 #var months[1] {{name}{Afteryule}{dawn}{8}{dusk}{18}{season}{Early-Winter}}
 #var months[2] {{name}{Solmath}{dawn}{9}{dusk}{17}{season}{Winter}}
