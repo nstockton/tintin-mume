@@ -2,7 +2,7 @@
 A collection of TinTin++ scripts for [MUME](http://mume.org "MUME Home Page")
 
 ## Installation
-These scripts require the latest beta version of TinTin. You can download the current TinTin Beta version from [here](http://tintin.sf.net/download/tintin-beta.tar.gz "TinTin Beta Version Direct Link").
+These scripts require Python (either version 2 or 3), and the latest beta version of TinTin. You can download the current TinTin Beta version from [here](http://tintin.sf.net/download/tintin-beta.tar.gz "TinTin Beta Version Direct Link").
 
 ## Usage
 Here is a brief alias reference for the scripts, until more detailed information can be written.
@@ -60,7 +60,7 @@ khe - kill *half-elf*
 kd - kill *dwarf*
 kh - kill *hobbit*
 km - kill *man*
-ko - kill *orc
+ko - kill *orc*
 kt - kill *troll*
 ttf - (target fighting) target the player or mob who you are currently fighting
 tta - (target again) If you previously targeted a brigand and he dies, the tta alias will label the next brigand in the room 't'.
@@ -78,7 +78,7 @@ ttr - target *troll*
 ### Mapper
 ```
 rinfo [label|vnum] - Returns information about a room. If no room label or vnum is given, will return information about the current room.
-rlabel [add|delete|info] [label] [vnum] - Adds, deletes, or returns information for a room label. A vnum argument is only needed when adding a room.
+rlabel [add|delete|info] [label] [vnum] - Adds, deletes, or returns information for a room label. A vnum argument is only needed when adding a label.
 run [c|label|vnum] [arguments] - Determines the most optimal route to the given room, and starts walking you there. If 'c' is given instead of a valid room label or vnum, your last destination will be used. Arguments are optional, and should be separated by a '|' character. If the argument is the word 'no' and a terrain, an extra movement cost of 10 will be added to all rooms with that terrain when calculating the path. Example: 'run seekspot noroad|nobrush' to run to the room labeled 'seekspot' while avoiding brush and roads.
 stop - Cancels the auto-walking of the 'run' command.
 savemap - saves the loaded map file to disk.
