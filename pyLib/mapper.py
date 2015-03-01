@@ -12,9 +12,9 @@ from .mapperworld import iterItems, Room, Exit, World
 
 
 class Mapper(threading.Thread, World):
-	def __init__(self, proxy, server, mapperQueue):
+	def __init__(self, client, server, mapperQueue):
 		threading.Thread.__init__(self)
-		self._proxy = proxy
+		self._client = client
 		self._server = server
 		self.mapperQueue = mapperQueue
 		self.isSynced = False
@@ -23,10 +23,10 @@ class Mapper(threading.Thread, World):
 		World.__init__(self)
 
 	def output(self, text):
-		return self.proxySend(text)
+		return self.clientSend(text)
 
-	def proxySend(self, msg):
-		self._proxy.sendall(b"\r\n" + msg.encode("utf-8") + b"\r\n")
+	def clientSend(self, msg):
+		self._client.sendall(b"\r\n" + msg.encode("utf-8") + b"\r\n")
 		return None
 
 	def serverSend(self, msg):
@@ -34,28 +34,28 @@ class Mapper(threading.Thread, World):
 		return None
 
 	def user_command_rinfo(self, *args):
-		self.proxySend("\n".join(self.rinfo(*args)))
+		self.clientSend("\n".join(self.rinfo(*args)))
 
 	def user_command_rlabel(self, *args):
 		result = self.rlabel(*args)
 		if result:
-			self.proxySend("\r\n".join(result))
+			self.clientSend("\r\n".join(result))
 
 	def user_command_savemap(self, *args):
 		self.saveRooms()
 
 	def user_command_run(self, *args):
 		if not args or not args[0]:
-			return self.proxySend("Usage: run [label|vnum]")
+			return self.clientSend("Usage: run [label|vnum]")
 		self.pathFindResult = []
 		argString = args[0].strip()
 		if argString == "c":
 			if self.lastPathFindQuery:
 				match = RUN_DESTINATION_REGEX.match(self.lastPathFindQuery)
 				destination = match.group("destination")
-				self.proxySend("Continuing walking to destination {0}.".format(destination))
+				self.clientSend("Continuing walking to destination {0}.".format(destination))
 			else:
-				return self.proxySend("Error: no previous path to continue.")
+				return self.clientSend("Error: no previous path to continue.")
 		else:
 			match = RUN_DESTINATION_REGEX.match(argString)
 			destination = match.group("destination")
@@ -77,7 +77,7 @@ class Mapper(threading.Thread, World):
 
 	def user_command_sync(self, *args):
 		if not args or not args[0]:
-			self.proxySend("Map no longer synced. Auto sync on.")
+			self.clientSend("Map no longer synced. Auto sync on.")
 			self.isSynced = False
 			self.serverSend("look")
 		else:
@@ -91,7 +91,7 @@ class Mapper(threading.Thread, World):
 				command = self.pathFindResult.pop()
 			self.serverSend(command)
 			if not self.pathFindResult:
-				self.proxySend("Arriving at destination.")
+				self.clientSend("Arriving at destination.")
 
 	def sync(self, name=None, desc=None, exits=None, vnum=None):
 		if vnum:
@@ -101,44 +101,44 @@ class Mapper(threading.Thread, World):
 				self.prevRoom = self.rooms[vnum]
 				self.currentRoom = self.rooms[vnum]
 				self.isSynced = True
-				return self.proxySend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
+				return self.clientSend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
 			else:
-				self.proxySend("No such vnum or label: {0}.".format(vnum))
+				self.clientSend("No such vnum or label: {0}.".format(vnum))
 		vnums = []
 		for vnum, roomObj in iterItems(self.rooms):
 			if roomObj.name == name:
 				vnums.append(vnum)
 		if not vnums:
-			self.proxySend("Current room not in the database. Unable to sync.")
+			self.clientSend("Current room not in the database. Unable to sync.")
 		elif len(vnums) == 1:
 			self.prevRoom = self.rooms[vnums[0]]
 			self.currentRoom = self.rooms[vnums[0]]
 			self.isSynced = True
-			self.proxySend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
+			self.clientSend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
 		else:
-			self.proxySend("More than one room in the database matches current room. Unable to sync.")
+			self.clientSend("More than one room in the database matches current room. Unable to sync.")
 
 	def stopRun(self, verbose=False):
 		if verbose or self.pathFindResult:
 			self.pathFindResult = []
-			self.proxySend("Path find canceled.")
+			self.clientSend("Path find canceled.")
 
 	def move(self, dir):
 		rooms = self.rooms
 		currentRoom = self.currentRoom
 		if not dir:
 			self.isSynced = False
-			return self.proxySend("Map no longer synced!")
+			return self.clientSend("Map no longer synced!")
 		elif dir not in DIRECTIONS:
 			self.isSynced = False
-			return self.proxySend("Error: Invalid direction '{0}'. Map no longer synced!".format(dir))
+			return self.clientSend("Error: Invalid direction '{0}'. Map no longer synced!".format(dir))
 		elif dir not in currentRoom.exits:
 			self.isSynced = False
-			return self.proxySend("Error: direction '{0}' not in database. Map no longer synced!".format(dir))
+			return self.clientSend("Error: direction '{0}' not in database. Map no longer synced!".format(dir))
 		vnum = currentRoom.exits[dir].to
 		if vnum not in rooms:
 			self.isSynced = False
-			return self.proxySend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(vnum, dir))
+			return self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(vnum, dir))
 		self.prevRoom = rooms[currentRoom.vnum]
 		self.currentRoom = rooms[vnum]
 
@@ -152,10 +152,10 @@ class Mapper(threading.Thread, World):
 
 	def run(self):
 		while True:
-			fromProxy, bytes = self.mapperQueue.get()
+			isFromClient, bytes = self.mapperQueue.get()
 			if bytes is None:
 				break
-			if fromProxy:
+			if isFromClient:
 				matchedUserInput = USER_COMMANDS_REGEX.match(bytes)
 				if matchedUserInput:
 					getattr(self, "user_command_{0}".format(self.decode(matchedUserInput.group("command"))))(self.decode(matchedUserInput.group("arguments")))
@@ -170,11 +170,11 @@ class Mapper(threading.Thread, World):
 				if movementForcedSearch and self.isSynced:
 					if movementForcedSearch.group("ignore"):
 						self.currentRoom = self.rooms[self.prevRoom.vnum]
-						self.proxySend("Forced movement ignored, still synced.")
+						self.clientSend("Forced movement ignored, still synced.")
 						continue
 					else:
 						self.isSynced = False
-						self.proxySend("Forced movement, no longer synced.")
+						self.clientSend("Forced movement, no longer synced.")
 				roomSearch = ROOM_TAGS_REGEX.search(received)
 				if not roomSearch:
 					continue
@@ -196,49 +196,64 @@ class Mapper(threading.Thread, World):
 				prompt = roomDict["prompt"]
 				if not self.isSynced:
 					self.sync(newRoom.name)
-		self.proxySend("Exiting mapper thread.")
+		self.clientSend("Exiting mapper thread.")
 
-class Connection(threading.Thread):
-	def __init__(self, inbound, outbound, type, mapperQueue, isTinTin=None):
+
+class Proxy(threading.Thread):
+	def __init__(self, client, server, mapperQueue):
 		threading.Thread.__init__(self)
-		self._inbound = inbound
-		self._outbound = outbound
+		self._client = client
+		self._server = server
 		self._mapperQueue = mapperQueue
-		self.isProxy = type == "proxy"
-		self.isServer = type == "server"
-		self.isTinTin = isTinTin is True
+
+	def run(self):
+		while True:
+			bytes = self._client.recv(4096)
+			if not bytes:
+				break
+			elif USER_COMMANDS_REGEX.match(bytes):
+				# True indicates that the bytes are from the user's Mud client.
+				self._mapperQueue.put((True, bytes))
+				continue
+			self._server.sendall(bytes)
+
+
+class Server(threading.Thread):
+	def __init__(self, client, server, mapperQueue, isTinTin=None):
+		threading.Thread.__init__(self)
+		self._client = client
+		self._server = server
+		self._mapperQueue = mapperQueue
+		self.isTinTin = bool(isTinTin)
 
 	def upperMatch(self, match):
 		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") != b"prompt" else b""))
 
 	def run(self):
 		while True:
-			bytes = self._inbound.recv(4096)
+			bytes = self._server.recv(4096)
 			if not bytes:
 				break
-			elif self.isServer:
-				self._mapperQueue.put((self.isProxy, bytes))
-				if self.isTinTin:
-					bytes = TINTIN_IGNORE_TAGS_REGEX.sub(b"", bytes)
-					bytes = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, bytes)
-					bytes = bytes.replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
-			elif USER_COMMANDS_REGEX.match(bytes):
-				self._mapperQueue.put((self.isProxy, bytes))
-				continue
-			self._outbound.sendall(bytes)
+			# False indicates that the bytes are *not* from the user's Mud client.
+			self._mapperQueue.put((False, bytes))
+			if self.isTinTin:
+				bytes = TINTIN_IGNORE_TAGS_REGEX.sub(b"", bytes)
+				bytes = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, bytes)
+				bytes = bytes.replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
+			self._client.sendall(bytes)
 
 
 def main(isTinTin=None):
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	proxySocket.bind(("", 4000))
 	proxySocket.listen(1)
-	proxyConnection, proxyAddress = proxySocket.accept()
+	clientConnection, proxyAddress = proxySocket.accept()
 	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serverConnection.connect(("193.134.218.99", 4242))
 	q = Queue()
-	mapperThread = Mapper(proxy=proxyConnection, server=serverConnection, mapperQueue=q)
-	proxyThread = Connection(inbound=proxyConnection, outbound=serverConnection, type="proxy", mapperQueue=q, isTinTin=isTinTin)
-	serverThread = Connection(inbound=serverConnection, outbound=proxyConnection, type="server", mapperQueue=q, isTinTin=isTinTin)
+	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=q)
+	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=q)
+	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=q, isTinTin=isTinTin)
 	serverThread.start()
 	proxyThread.start()
 	mapperThread.start()
@@ -250,10 +265,10 @@ def main(isTinTin=None):
 	q.put((None, None))
 	mapperThread.join()
 	try:
-		proxyConnection.sendall(b"\r\n")
-		proxyConnection.shutdown(socket.SHUT_RDWR)
+		clientConnection.sendall(b"\r\n")
+		clientConnection.shutdown(socket.SHUT_RDWR)
 	except:
 		pass
 	proxyThread.join()
 	serverConnection.close()
-	proxyConnection.close()
+	clientConnection.close()
