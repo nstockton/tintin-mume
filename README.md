@@ -79,7 +79,7 @@ ttr - target *troll*
 ```
 rinfo [label|vnum] - Returns information about a room. If no room label or vnum is given, will return information about the current room.
 rlabel [add|delete|info] [label] [vnum] - Adds, deletes, or returns information for a room label. A vnum argument is only needed when adding a label.
-run [c|label|vnum] [arguments] - Determines the most optimal route to the given room, and starts walking you there. If 'c' is given instead of a valid room label or vnum, your last destination will be used. Arguments are optional, and should be separated by a '|' character. If the argument is the word 'no' and a terrain, an extra movement cost of 10 will be added to all rooms with that terrain when calculating the path. Example: 'run seekspot noroad|nobrush' to run to the room labeled 'seekspot' while avoiding brush and roads.
+run [c|label|vnum] [arguments] - Determines the most optimal route to the given room, and starts walking you there. If 'c' is given instead of a valid room label or vnum, your last destination will be used. Arguments are optional, and should be separated by a '|' character. If the argument is the word 'no' and a terrain, an extra movement cost of 10 will be added to all rooms with that terrain when calculating the path. Example: 'run seekspot1 noroad|nobrush' to run to the room labeled 'seekspot1' while avoiding brush and roads.
 stop - Cancels the auto-walking of the 'run' command.
 savemap - saves the loaded map file to disk.
 sync [label|vnum] - Manually sync the map to the given room label or vnum. if no label or vnum is given, the 'sync' command will set the mapper's synced state to unsynced, and send a 'look' command to the game.
