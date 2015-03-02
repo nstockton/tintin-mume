@@ -59,6 +59,7 @@ from pyLib import communication
 #var communicationIgnoreList[Galadriel] {true}
 #var communicationIgnoreList[Grinder] {true}
 #var communicationIgnoreList[Huor] {true}
+#var communicationIgnoreList[Nagrorh] {true}
 #var communicationIgnoreList[Nordri] {true}
 #var communicationIgnoreList[Sauron] {true}
 #var communicationIgnoreList[Gramps] {true}
