@@ -7,13 +7,15 @@ except ImportError:
 import socket
 import threading
 
-from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
+from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TELNET_NEGOTIATION_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
 from .mapperworld import iterItems, Room, Exit, World
+from .mpi import MPI
 
 
 class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue):
 		threading.Thread.__init__(self)
+		self.daemon = True
 		self._client = client
 		self._server = server
 		self.mapperQueue = mapperQueue
@@ -160,7 +162,7 @@ class Mapper(threading.Thread, World):
 				if matchedUserInput:
 					getattr(self, "user_command_{0}".format(self.decode(matchedUserInput.group("command"))))(self.decode(matchedUserInput.group("arguments")))
 			else:
-				received = self.decode(bytes)
+				received = self.decode(TELNET_NEGOTIATION_REGEX.sub("", bytes))
 				received = IGNORE_TAGS_REGEX.sub("", received)
 				received = ANSI_COLOR_REGEX.sub("", received)
 				received = received.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", '"').replace("\r\n", "\n")
@@ -202,6 +204,7 @@ class Mapper(threading.Thread, World):
 class Proxy(threading.Thread):
 	def __init__(self, client, server, mapperQueue):
 		threading.Thread.__init__(self)
+		self.daemon = True
 		self._client = client
 		self._server = server
 		self._mapperQueue = mapperQueue
@@ -212,18 +215,20 @@ class Proxy(threading.Thread):
 			if not bytes:
 				break
 			elif USER_COMMANDS_REGEX.match(bytes):
-				# True indicates that the bytes are from the user's Mud client.
+				# True tells the mapper thread that the bytes are from the user's Mud client.
 				self._mapperQueue.put((True, bytes))
 				continue
 			self._server.sendall(bytes)
 
 
 class Server(threading.Thread):
-	def __init__(self, client, server, mapperQueue, isTinTin=None):
+	def __init__(self, client, server, mapperQueue, mpiQueue, isTinTin=None):
 		threading.Thread.__init__(self)
+		self.daemon = True
 		self._client = client
 		self._server = server
 		self._mapperQueue = mapperQueue
+		self._mpiQueue = mpiQueue
 		self.isTinTin = bool(isTinTin)
 
 	def upperMatch(self, match):
@@ -234,8 +239,9 @@ class Server(threading.Thread):
 			bytes = self._server.recv(4096)
 			if not bytes:
 				break
-			# False indicates that the bytes are *not* from the user's Mud client.
+			# False tells the mapper thread that the bytes are *not* from the user's Mud client.
 			self._mapperQueue.put((False, bytes))
+			self._mpiQueue.put(bytes)
 			if self.isTinTin:
 				bytes = TINTIN_IGNORE_TAGS_REGEX.sub(b"", bytes)
 				bytes = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, bytes)
@@ -250,20 +256,25 @@ def main(isTinTin=None):
 	clientConnection, proxyAddress = proxySocket.accept()
 	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serverConnection.connect(("193.134.218.99", 4242))
-	q = Queue()
-	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=q)
-	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=q)
-	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=q, isTinTin=isTinTin)
+	mapperQueue = Queue()
+	mpiQueue = Queue()
+	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
+	mpiThread = MPI(client=clientConnection, server=serverConnection, mpiQueue=mpiQueue, isTinTin=isTinTin)
+	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
+	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, mpiQueue=mpiQueue, isTinTin=isTinTin)
 	serverThread.start()
 	proxyThread.start()
 	mapperThread.start()
+	mpiThread.start()
 	serverThread.join()
 	try:
 		serverConnection.shutdown(socket.SHUT_RDWR)
 	except:
 		pass
-	q.put((None, None))
+	mapperQueue.put((None, None))
+	mpiQueue.put(None)
 	mapperThread.join()
+	mpiThread.join()
 	try:
 		clientConnection.sendall(b"\r\n")
 		clientConnection.shutdown(socket.SHUT_RDWR)

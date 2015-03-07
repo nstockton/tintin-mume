@@ -2,6 +2,8 @@
 
 from pyLib import mapper
 
+#action {^MPICOMMAND:%1:MPICOMMAND$} {#mume {#system %1;#mapper continue}}
+
 #gts
 
 #mapper mapper.main(isTinTin=True)
