@@ -17,7 +17,7 @@ RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?
 
 USER_COMMANDS_REGEX = re.compile(br"^(?P<command>rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?")
 
-TELNET_NEGOTIATION_REGEX = re.compile(r"(?<!\xff)(?:\xff\xfa.+?\xff\xf0|\xff[\xfb\xfc\xfd\xfe]?[^\xff])")
+TELNET_NEGOTIATION_REGEX = re.compile(rb"(?<!\xff)(?:\xff\xfa.+?\xff\xf0|\xff[\xfb\xfc\xfd\xfe]?[^\xff])")
 
 IGNORE_TAGS_REGEX = re.compile(r"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 

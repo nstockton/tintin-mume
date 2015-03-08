@@ -162,7 +162,7 @@ class Mapper(threading.Thread, World):
 				if matchedUserInput:
 					getattr(self, "user_command_{0}".format(self.decode(matchedUserInput.group("command"))))(self.decode(matchedUserInput.group("arguments")))
 			else:
-				received = self.decode(TELNET_NEGOTIATION_REGEX.sub("", bytes))
+				received = self.decode(TELNET_NEGOTIATION_REGEX.sub(b"", bytes))
 				received = IGNORE_TAGS_REGEX.sub("", received)
 				received = ANSI_COLOR_REGEX.sub("", received)
 				received = received.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", '"').replace("\r\n", "\n")
