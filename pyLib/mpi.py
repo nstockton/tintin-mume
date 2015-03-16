@@ -28,7 +28,7 @@ class MPI(threading.Thread):
 		self.pager = os.getenv("TINTINPAGER", "less")
 
 	def parse(self, data):
-		data = TELNET_NEGOTIATION_REGEX.sub("", "".join(self.decode(data).lstrip().splitlines(True)[:-1])).replace("\x00", "")
+		data = self.decode(TELNET_NEGOTIATION_REGEX.sub(b"", b"".join(data.lstrip().splitlines(True)[:-1]))).replace("\x00", "")
 		match = MPI_REGEX.search(data)
 		if match is None:
 			return
@@ -51,7 +51,7 @@ class MPI(threading.Thread):
 				try:
 					raw_input("Continue:")
 				except NameError:
-					input("Continue")
+					input("Continue:")
 			else:
 				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
 				editorProcess.wait()
