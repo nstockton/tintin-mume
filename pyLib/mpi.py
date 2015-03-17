@@ -1,4 +1,4 @@
-﻿import os.path
+﻿import os
 try:
 	from Queue import Queue
 except ImportError:
@@ -24,8 +24,8 @@ class MPI(threading.Thread):
 		self._server = server
 		self.mpiQueue = mpiQueue
 		self.isTinTin = bool(isTinTin)
-		self.fileName = None
-		self.session = None
+		self.editor = os.getenv("TINTINEDITOR", "nano -w")
+		self.pager = os.getenv("TINTINPAGER", "less")
 
 	def parse(self, data):
 		data = TELNET_NEGOTIATION_REGEX.sub("", "".join(self.decode(data).lstrip().splitlines(True)[:-1])).replace("\x00", "")
@@ -34,41 +34,30 @@ class MPI(threading.Thread):
 			return
 		result = match.groupdict()
 		if result["command"] == "V":
-			if self.isTinTin:
-				fileName = os.path.join(TMP_DIR, "V{0}.txt".format(random.randint(1000, 9999)))
-				with open(fileName, "wb") as fileObj:
-					fileObj.write(result["body"].encode("utf-8"))
-				print("MPICOMMAND:{0} {1}:MPICOMMAND".format("less", fileName))
-			else:
-				less = subprocess.Popen("less", stdin=subprocess.PIPE)
-				less.stdin.write(result["body"].encode("utf-8"))
-				less.stdin.close()
-				less.wait()
-		elif result["command"] == "E":
-			self.session = result["session"]
-			self.fileName = os.path.join(TMP_DIR, "{0}.txt".format(result["session"]))
-			with open(self.fileName, "wb") as fileObj:
+			fileName = os.path.join(TMP_DIR, "V{0}.txt".format(random.randint(1000, 9999)))
+			with open(fileName, "wb") as fileObj:
 				fileObj.write(result["body"].encode("utf-8"))
 			if self.isTinTin:
-				print("MPICOMMAND:{0} {1}:MPICOMMAND".format("nano -w", self.fileName))
+				print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.pager, fileName))
+			else:
+				pagerProcess = subprocess.Popen(self.pager.split() + [fileName])
+				pagerProcess.wait()
+		elif result["command"] == "E":
+			fileName = os.path.join(TMP_DIR, "{0}.txt".format(result["session"]))
+			with open(fileName, "wb") as fileObj:
+				fileObj.write(result["body"].encode("utf-8"))
+			if self.isTinTin:
+				print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.editor, fileName))
 				try:
 					raw_input("Continue:")
 				except NameError:
 					input("Continue")
-				self.doneEditing()
 			else:
-				nano = subprocess.Popen(["nano", "-w", self.fileName])
-				nano.wait()
-				self.doneEditing()
-
-	def doneEditing(self):
-		if self.fileName is None or self.session is None:
-			return
-		with open(self.fileName, "rb") as fileObj:
-			response = "\n".join((self.session.replace("M", "E"), fileObj.read().decode("utf-8")))
-		self.fileName = None
-		self.session = None
-		self._server.sendall("~$#EE{0}\n{1}".format(len(response), response).encode("utf-8"))
+				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
+				editorProcess.wait()
+			with open(fileName, "rb") as fileObj:
+				response = "\n".join((result["session"].replace("M", "E"), fileObj.read().decode("utf-8")))
+			self._server.sendall("~$#EE{0}\n{1}".format(len(response), response).encode("utf-8"))
 
 	def decode(self, bytes):
 		try:
