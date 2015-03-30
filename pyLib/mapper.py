@@ -10,6 +10,7 @@ import threading
 from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TELNET_NEGOTIATION_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
 from .mapperworld import iterItems, Room, Exit, World
 from .mpi import MPI
+from .utils import decodeBytes
 
 
 class Mapper(threading.Thread, World):
@@ -144,14 +145,6 @@ class Mapper(threading.Thread, World):
 		self.prevRoom = rooms[currentRoom.vnum]
 		self.currentRoom = rooms[vnum]
 
-	def decode(self, bytes):
-		try:
-			return bytes.decode("utf-8")
-		except UnicodeDecodeError:
-			return bytes.decode("latin-1")
-		except AttributeError:
-			return None
-
 	def run(self):
 		while True:
 			isFromClient, bytes = self.mapperQueue.get()
@@ -160,9 +153,9 @@ class Mapper(threading.Thread, World):
 			if isFromClient:
 				matchedUserInput = USER_COMMANDS_REGEX.match(bytes)
 				if matchedUserInput:
-					getattr(self, "user_command_{0}".format(self.decode(matchedUserInput.group("command"))))(self.decode(matchedUserInput.group("arguments")))
+					getattr(self, "user_command_{0}".format(decodeBytes(matchedUserInput.group("command"))))(decodeBytes(matchedUserInput.group("arguments")))
 			else:
-				received = self.decode(TELNET_NEGOTIATION_REGEX.sub(b"", bytes))
+				received = decodeBytes(TELNET_NEGOTIATION_REGEX.sub(b"", bytes))
 				received = IGNORE_TAGS_REGEX.sub("", received)
 				received = ANSI_COLOR_REGEX.sub("", received)
 				received = received.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", '"').replace("\r\n", "\n")

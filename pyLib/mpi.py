@@ -5,12 +5,12 @@ except ImportError:
 	from queue import Queue
 import random
 import re
-import socket
 import subprocess
 import tempfile
 import threading
 
 from .mapperconstants import TELNET_NEGOTIATION_REGEX
+from .utils import decodeBytes
 
 
 MPI_REGEX = re.compile(r"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\d+)(?:\n))?(?P<description>.+?)\n(?P<body>.*)", re.DOTALL | re.MULTILINE)
@@ -28,7 +28,7 @@ class MPI(threading.Thread):
 		self.pager = os.getenv("TINTINPAGER", "less")
 
 	def parse(self, data):
-		data = self.decode(TELNET_NEGOTIATION_REGEX.sub(b"", b"".join(data.lstrip().splitlines(True)[:-1]))).replace("\x00", "")
+		data = decodeBytes(TELNET_NEGOTIATION_REGEX.sub(b"", b"".join(data.lstrip().splitlines(True)[:-1]))).replace("\x00", "")
 		match = MPI_REGEX.search(data)
 		if match is None:
 			return
@@ -59,14 +59,6 @@ class MPI(threading.Thread):
 				response = "\n".join((result["session"].replace("M", "E"), fileObj.read().decode("utf-8")))
 			self._server.sendall("~$#EE{0}\n{1}".format(len(response), response).encode("utf-8"))
 
-	def decode(self, bytes):
-		try:
-			return bytes.decode("utf-8")
-		except UnicodeDecodeError:
-			return bytes.decode("latin-1")
-		except AttributeError:
-			return None
-
 	def run(self):
 		buffer = b""
 		while True:
@@ -77,4 +69,4 @@ class MPI(threading.Thread):
 			if b"\xff\xf9" in buffer:
 				output, buffer = buffer.rsplit(b"\xff\xf9", 1)
 				self.parse(output)
-		self._client.sendall(b"\r\n" + "Exiting MPI thread.".encode("utf-8") + b"\r\n")
+		self._client.sendall(b"\r\nExiting MPI thread.\r\n")
