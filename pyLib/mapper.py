@@ -244,6 +244,7 @@ class Server(threading.Thread):
 
 def main(isTinTin=None):
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	proxySocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	proxySocket.bind(("", 4000))
 	proxySocket.listen(1)
 	clientConnection, proxyAddress = proxySocket.accept()
