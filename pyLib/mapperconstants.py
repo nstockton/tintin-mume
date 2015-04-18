@@ -15,7 +15,7 @@ DIRECTIONS = ["north", "east", "south", "west", "up", "down"]
 
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
-USER_COMMANDS_REGEX = re.compile(br"^(?P<command>rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?")
+USER_COMMANDS_REGEX = re.compile(br"^(?P<command>rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?$")
 
 TELNET_NEGOTIATION_REGEX = re.compile(br"(?<!\xff)(?:\xff\xfa.+?\xff\xf0|\xff[\xfb\xfc\xfd\xfe]?[^\xff])")
 

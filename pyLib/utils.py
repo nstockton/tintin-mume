@@ -4,4 +4,4 @@
 	except UnicodeDecodeError:
 		return bytes.decode("latin-1")
 	except AttributeError:
-		return bytes.decode("ascii", "replace")
+		return ""
