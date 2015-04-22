@@ -6,15 +6,16 @@ except ImportError:
 import random
 import re
 import subprocess
+from telnetlib import IAC
 import tempfile
 import threading
 
-from .mapperconstants import TELNET_NEGOTIATION_REGEX
-from .utils import decodeBytes
+from .utils import decodeBytes, TelnetStripper
 
 
 MPI_REGEX = re.compile(r"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\d+)(?:\n))?(?P<description>.+?)\n(?P<body>.*)", re.DOTALL | re.MULTILINE)
 TMP_DIR = tempfile.gettempdir()
+IAC = b"\xff"
 
 class MPI(threading.Thread):
 	def __init__(self, client, server, mpiQueue, isTinTin=None):
@@ -27,46 +28,42 @@ class MPI(threading.Thread):
 		self.editor = os.getenv("TINTINEDITOR", "nano -w")
 		self.pager = os.getenv("TINTINPAGER", "less")
 
-	def parse(self, data):
-		data = decodeBytes(TELNET_NEGOTIATION_REGEX.sub(b"", b"".join(data.lstrip().splitlines(True)[:-1]))).replace("\x00", "")
-		match = MPI_REGEX.search(data)
-		if match is None:
-			return
-		result = match.groupdict()
-		if result["command"] == "V":
-			fileName = os.path.join(TMP_DIR, "V{0}.txt".format(random.randint(1000, 9999)))
-			with open(fileName, "wb") as fileObj:
-				fileObj.write(result["body"].encode("utf-8"))
-			if self.isTinTin:
-				print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.pager, fileName))
-			else:
-				pagerProcess = subprocess.Popen(self.pager.split() + [fileName])
-				pagerProcess.wait()
-		elif result["command"] == "E":
-			fileName = os.path.join(TMP_DIR, "{0}.txt".format(result["session"]))
-			with open(fileName, "wb") as fileObj:
-				fileObj.write(result["body"].encode("utf-8"))
-			if self.isTinTin:
-				print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.editor, fileName))
-				try:
-					raw_input("Continue:")
-				except NameError:
-					input("Continue:")
-			else:
-				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
-				editorProcess.wait()
-			with open(fileName, "rb") as fileObj:
-				response = "\n".join((result["session"].replace("M", "E"), fileObj.read().decode("utf-8")))
-			self._server.sendall("~$#EE{0}\n{1}".format(len(response), response).encode("utf-8"))
-
 	def run(self):
-		buffer = b""
+		stripper = TelnetStripper()
 		while True:
-			bytes = self.mpiQueue.get()
-			if bytes is None:
+			data = self.mpiQueue.get()
+			if data is None:
 				break
-			buffer += bytes
-			if b"\xff\xf9" in buffer:
-				output, buffer = buffer.rsplit(b"\xff\xf9", 1)
-				self.parse(output)
+			data = stripper.process(data)
+			if data is None:
+				continue
+			match = MPI_REGEX.search(decodeBytes(b"".join(data.lstrip().splitlines(True)[:-1])))
+			if match is None:
+				continue
+			result = match.groupdict()
+			if result["command"] == "V":
+				fileName = os.path.join(TMP_DIR, "V{0}.txt".format(random.randint(1000, 9999)))
+				with open(fileName, "wb") as fileObj:
+					fileObj.write(result["body"].encode("utf-8"))
+				if self.isTinTin:
+					print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.pager, fileName))
+				else:
+					pagerProcess = subprocess.Popen(self.pager.split() + [fileName])
+					pagerProcess.wait()
+			elif result["command"] == "E":
+				fileName = os.path.join(TMP_DIR, "{0}.txt".format(result["session"]))
+				with open(fileName, "wb") as fileObj:
+					fileObj.write(result["body"].encode("utf-8"))
+				if self.isTinTin:
+					print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.editor, fileName))
+					try:
+						raw_input("Continue:")
+					except NameError:
+						input("Continue:")
+				else:
+					editorProcess = subprocess.Popen(self.editor.split() + [fileName])
+					editorProcess.wait()
+				with open(fileName, "rb") as fileObj:
+					response = "\n".join((result["session"].replace("M", "E"), fileObj.read().replace(IAC, IAC + IAC).decode("utf-8")))
+				self._server.sendall("~$#EE{0}\n{1}".format(len(response), response).encode("utf-8"))
 		self._client.sendall(b"\r\nExiting MPI thread.\r\n")

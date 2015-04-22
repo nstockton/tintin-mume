@@ -7,11 +7,13 @@ except ImportError:
 import socket
 import threading
 
-from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TELNET_NEGOTIATION_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
+from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
 from .mapperworld import iterItems, Room, Exit, World
 from .mpi import MPI
-from .utils import decodeBytes
+from .utils import decodeBytes, TelnetStripper
 
+
+IAC = b"\xff"
 
 class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue):
@@ -29,11 +31,11 @@ class Mapper(threading.Thread, World):
 		return self.clientSend(text)
 
 	def clientSend(self, msg):
-		self._client.sendall(b"\r\n" + msg.encode("utf-8") + b"\r\n")
+		self._client.sendall(b"\r\n" + msg.encode("utf-8").replace(IAC, IAC + IAC) + b"\r\n")
 		return None
 
 	def serverSend(self, msg):
-		self._server.sendall(msg.encode("utf-8") + b"\r\n")
+		self._server.sendall(msg.encode("utf-8").replace(IAC, IAC + IAC) + b"\r\n")
 		return None
 
 	def user_command_rinfo(self, *args):
@@ -146,17 +148,20 @@ class Mapper(threading.Thread, World):
 		self.currentRoom = rooms[vnum]
 
 	def run(self):
+		stripper = TelnetStripper()
 		while True:
-			isFromClient, bytes = self.mapperQueue.get()
-			if bytes is None:
+			isFromClient, data = self.mapperQueue.get()
+			if data is None:
 				break
 			if isFromClient:
-				matchedUserInput = USER_COMMANDS_REGEX.match(bytes)
+				matchedUserInput = USER_COMMANDS_REGEX.match(data)
 				if matchedUserInput:
 					getattr(self, "user_command_{0}".format(decodeBytes(matchedUserInput.group("command"))))(decodeBytes(matchedUserInput.group("arguments")))
 			else:
-				received = decodeBytes(TELNET_NEGOTIATION_REGEX.sub(b"", bytes))
-				received = IGNORE_TAGS_REGEX.sub("", received)
+				data = stripper.process(data)
+				if data is None:
+					continue
+				received = IGNORE_TAGS_REGEX.sub("", decodeBytes(data))
 				received = ANSI_COLOR_REGEX.sub("", received)
 				received = received.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", '"').replace("\r\n", "\n")
 				movementForcedSearch = MOVEMENT_FORCED_REGEX.search(received)
@@ -204,14 +209,14 @@ class Proxy(threading.Thread):
 
 	def run(self):
 		while True:
-			bytes = self._client.recv(4096)
-			if not bytes:
+			data = self._client.recv(4096)
+			if not data:
 				break
-			elif USER_COMMANDS_REGEX.match(bytes):
-				# True tells the mapper thread that the bytes are from the user's Mud client.
-				self._mapperQueue.put((True, bytes))
+			elif USER_COMMANDS_REGEX.match(data):
+				# True tells the mapper thread that the data is from the user's Mud client.
+				self._mapperQueue.put((True, data))
 				continue
-			self._server.sendall(bytes)
+			self._server.sendall(data)
 
 
 class Server(threading.Thread):
@@ -229,17 +234,17 @@ class Server(threading.Thread):
 
 	def run(self):
 		while True:
-			bytes = self._server.recv(4096)
-			if not bytes:
+			data = self._server.recv(4096)
+			if not data:
 				break
-			# False tells the mapper thread that the bytes are *not* from the user's Mud client.
-			self._mapperQueue.put((False, bytes))
-			self._mpiQueue.put(bytes)
+			# False tells the mapper thread that the data is from the Mume server, and *not* from the user's Mud client.
+			self._mapperQueue.put((False, data))
+			self._mpiQueue.put(data)
 			if self.isTinTin:
-				bytes = TINTIN_IGNORE_TAGS_REGEX.sub(b"", bytes)
-				bytes = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, bytes)
-				bytes = bytes.replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
-			self._client.sendall(bytes)
+				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
+				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
+				data = data.replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
+			self._client.sendall(data)
 
 
 def main(isTinTin=None):
