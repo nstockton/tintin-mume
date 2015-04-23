@@ -206,12 +206,21 @@ class Proxy(threading.Thread):
 		self._client = client
 		self._server = server
 		self._mapperQueue = mapperQueue
+		self.alive = threading.Event()
+
+	def close(self):
+		self.alive.clear()
 
 	def run(self):
-		while True:
-			data = self._client.recv(4096)
+		self.alive.set()
+		while self.alive.isSet():
+			try:
+				data = self._client.recv(4096)
+			except socket.timeout:
+				continue
 			if not data:
-				break
+				self.close()
+				continue
 			elif USER_COMMANDS_REGEX.match(data):
 				# True tells the mapper thread that the data is from the user's Mud client.
 				self._mapperQueue.put((True, data))
@@ -253,7 +262,9 @@ def main(isTinTin=None):
 	proxySocket.bind(("", 4000))
 	proxySocket.listen(1)
 	clientConnection, proxyAddress = proxySocket.accept()
+	clientConnection.settimeout(1.0)
 	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	serverConnection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 	serverConnection.connect(("193.134.218.99", 4242))
 	mapperQueue = Queue()
 	mpiQueue = Queue()
@@ -276,6 +287,7 @@ def main(isTinTin=None):
 	mpiThread.join()
 	try:
 		clientConnection.sendall(b"\r\n")
+		proxyThread.close()
 		clientConnection.shutdown(socket.SHUT_RDWR)
 	except:
 		pass
