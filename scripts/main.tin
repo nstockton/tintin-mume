@@ -114,6 +114,7 @@
 	#send {change spam off};
 	#send {change brief on};
 	#send {change compact on};
+	#send {change wordwrap off};
 	#send {info CHARNAME: %M.};
 	#send {time};
 	#send {info XPCOUNTER: %x %t %X %T.}

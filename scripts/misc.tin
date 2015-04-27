@@ -4,7 +4,7 @@
 #action {^{You can\'t do this sitting\!|You can\'t concentrate enough while resting\.}$} {#send {stand}}
 #action {^Prompt set to None.$} {#send {change prompt points}}
 #action {^You can only gain one level at a time... Reduced experience.$} {#bell}
-#action {^Text will now be word wrapped.$} {#send {change wordwrap}}
+#action {^Text will be word-wrapped.$} {#send {change wordwrap off}}
 
 #alias {cpouch} {#send {remove cloak\nremove fur\nget cloak pouch\nwear cloak\nput cloak pouch\nput fur pouch}}
 #alias {fpack} {#send {remove cloak\nremove fur\nget fur pack\nwear fur\nput cloak pack\nput fur pack}}
