@@ -86,7 +86,7 @@ sync [label|vnum] - Manually sync the map to the given room label or vnum. if no
 ```
 ### Path Walker
 ```
-p [direction] - If you are are on a road, will start following the road in the given direction using the '=' signs around road exits in the exits line. The script will stop walking if there are more then 1 possible road out of the room, not including the direction you came from (I.E. a junction).
+p [direction] - If you are are on a road, will start following the road in the given direction using the '=' signs around road exits in the exits line. The script will stop walking if there are more then 1 possible roads out of the room, not including the direction you came from (I.E. a junction).
 pp - If you are currently following a road, will stop following it.
 ```
 ### Reenter
@@ -104,7 +104,7 @@ rpf - (Report full) same as rpscore, rptnl
 ```
 dadd [secret name] [direction] - Add a secret exit to the current room in the secrets database.  For example: 'dadd colvert e'. Short forms of directions [e|ea|eas] will automatically be converted to their long form 'east'.
 ddel [room name|all] [direction|all] - Deletes 1 or more secret exits from the room. Like the 'dadd' command, direction names are automatically converted to their long forn. The word 'all' is a wild card. If there are no more secret exits for the current room after the deletion, the room is automatically removed from the database. Examples: 'ddel wall e' (delete the secret named 'wall' that's to the 'east', but leave the wall that's too the north), 'ddel all e' (delete all secret exits in the room that are located to the east), 'ddel stonedoor all' (Delete all secrets named 'stonedoor' from the room, no matter what direction they are located), 'ddel all all' (delete all the secrets from the room, and remove the room entry from the database).
-ddis [string] - Displays all the secrets (if any) for a room or rooms. If the user provides a string to be searched for, a case-insensitive, fuzzy search is performed for all room names in the database matching string. Otherwise, a case-sensitive, exact search is performed for the last captured room name from the mud.
+dinfo [string] - Displays all the secrets (if any) for a room or rooms. If the user provides a string to be searched for, a case-insensitive, fuzzy search is performed for all room names in the database matching string. Otherwise, a case-sensitive, exact search is performed for the last captured room name from the mud.
 ddo - Open all secret exits in the current room.
 ```
 ### Sounds
