@@ -21,7 +21,7 @@ IGNORE_TAGS_REGEX = re.compile(r"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote
 
 TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|west|up|down))?/>|<[/]?(?:xml|terrain|magic|weather|room|exits|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
-TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>prompt|name|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
+TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>prompt|name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
 
 ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>north|south|east|west|up|down))?/>)?<room><name>(?P<name>.+?)</name>[\r\n]*(?:<description>(?P<description>.*?)</description>)?(?P<dynamic>.*?)</room>(?:<exits>(?P<exits>.+?)</exits>)?.*?<prompt>(?P<prompt>.*?)</prompt>", re.DOTALL|re.MULTILINE)
 
