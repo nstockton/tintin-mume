@@ -150,3 +150,10 @@
 	spellTimerStatus battleglory;
 	#line {gag}
 }
+
+#action {^The draught burns down your throat, and a fiery feeling fills your limbs.$} {spellTimerSet orkish draught}
+#action {^As the warmth of the draught recedes from your limbs, you feel less energetic.$} {spellTimerUnset orkish draught}
+#action {^- Orkish draught$} {
+	spellTimerStatus orkish draught;
+	#line {gag}
+}
