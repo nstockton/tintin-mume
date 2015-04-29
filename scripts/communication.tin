@@ -4,13 +4,25 @@ from pyLib import communication
 
 #gts
 
-#action {^{TELL|SAY|NARRATE|PRAY|EMOTE}:%2:{\1}$} {
+#action {^EMOTE:%1:EMOTE$} {
+	#echo {%s} {%1};
+	#line {strip} {
+		#regexp {%1} {^%w %+$} {
+			#if {!&communicationIgnoreList[&1]} {
+				#line {log} {communication/says.txt} {&0};
+			}
+		}
+	};
+	#line {gag}
+}
+
+#action {^{TELL|SAY|NARRATE|PRAY}:%2:{\1}$} {
 	#echo {%s} {%2};
 	#line {strip} {
-		#regexp {%2} {^{(The voice of )?}%w {(narrates |says |prays |tells you |tells the group |whispers to you[,]? |asks you )?}%+$} {
+		#regexp {%2} {^{(The voice of )?}%w {(narrates|says|prays|tells you|tells the group|whispers to you[,]?|asks you)} '%+'$} {
 			#if {!&communicationIgnoreList[&3]} {
 				#if {"%1" == "PRAY"} {#line {log} {communication/prays.txt} {&0}};
-				#elseif {("%1" == "SAY") || ("%1" == "EMOTE")} {#line {log} {communication/says.txt} {&0}};
+				#elseif {"%1" == "SAY"} {#line {log} {communication/says.txt} {&0}};
 				#elseif {"%1" == "TELL"} {
 					#line {log} {communication/tells.txt} {&0};
 					#if {"&5" == "tells you "} {#var {replyTo} {&3}};
