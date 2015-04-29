@@ -4,22 +4,16 @@ from pyLib import communication
 
 #gts
 
-#nop Echo emotes for security
-#action {~^EMOTE:%1:EMOTE$} {
-	#echo {%s} {%1};
-	#line {gag}
-}
-
-#action {~^{TELL|SAY|NARRATE|PRAY}:%2:{TELL|SAY|NARRATE|PRAY}$} {
+#action {^{TELL|SAY|NARRATE|PRAY|EMOTE}:%2:{\1}$} {
 	#echo {%s} {%2};
 	#line {strip} {
-		#regexp {%2} {^{(The voice of )?}%w {narrates|says|prays|tells you|tells the group|whispers to you} '%+'$} {
+		#regexp {%2} {^{(The voice of )?}%w {(narrates|says|prays|tells you|tells the group|whispers to you[,]?|asks you)? }%+$} {
 			#if {!&communicationIgnoreList[&3]} {
 				#if {"%1" == "PRAY"} {#line {log} {communication/prays.txt} {&0}};
-				#elseif {"%1" == "SAY"} {#line {log} {communication/says.txt} {&0}};
+				#elseif {("%1" == "SAY") || ("%1" == "EMOTE")} {#line {log} {communication/says.txt} {&0}};
 				#elseif {"%1" == "TELL"} {
 					#line {log} {communication/tells.txt} {&0};
-					#if {"&4" != "tells the group"} {#var {replyTo} {&3}};
+					#if {"&5" == "tells you"} {#var {replyTo} {&3}};
 					playsound tells.wav
 				};
 				#elseif {"%1" == "NARRATE"} {
