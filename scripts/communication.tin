@@ -25,7 +25,7 @@ from pyLib import communication
 				#elseif {"%1" == "SAY"} {#line {log} {communication/says.txt} {&0}};
 				#elseif {"%1" == "TELL"} {
 					#line {log} {communication/tells.txt} {&0};
-					#if {"&5" == "tells you "} {#var {replyTo} {&3}};
+					#if {"&5" == "tells you"} {#var {replyTo} {&3}};
 					playsound tells.wav
 				};
 				#elseif {"%1" == "NARRATE"} {
