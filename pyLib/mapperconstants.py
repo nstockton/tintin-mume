@@ -13,6 +13,8 @@ SAMPLE_LABELS_FILE = "data/room_labels.json.sample"
 
 DIRECTIONS = ["north", "east", "south", "west", "up", "down"]
 
+MPI_REGEX = re.compile(br"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\d+)(?:\n))?(?P<description>.+?)\n(?P<body>.*)", re.DOTALL | re.MULTILINE)
+
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
 USER_COMMANDS_REGEX = re.compile(br"^(?P<command>rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?$")
