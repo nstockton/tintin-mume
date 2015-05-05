@@ -228,6 +228,9 @@ class Proxy(threading.Thread):
 				data = self._client.recv(4096)
 			except socket.timeout:
 				continue
+			except BrokenPipeError:
+				self.close()
+				continue
 			if not data:
 				self.close()
 				continue
