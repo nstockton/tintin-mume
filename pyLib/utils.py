@@ -3,6 +3,21 @@
 from .mapperconstants import IS_PYTHON_2
 
 
+def multiReplace(text, replacements):
+	try:
+		# replacements is a dict in Python 2.
+		replacements = iter(replacements.iteritems())
+	except AttributeError:
+		try:
+			# Replacements is a dict in Python 3.
+			replacements = iter(replacements.items())
+		except AttributeError:
+			# replacements is a list of tuples.
+			pass
+	for pattern, substitution in replacements:
+		text = text.replace(pattern, substitution)
+	return text
+
 def decodeBytes(data):
 	try:
 		return data.decode("utf-8")

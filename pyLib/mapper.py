@@ -8,10 +8,10 @@ import socket
 from telnetlib import IAC, DO, GA, TTYPE, NAWS
 import threading
 
-from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
+from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, MAPPER_IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS, XML_UNESCAPE_PATTERNS
 from .mapperworld import iterItems, Room, Exit, World
 from .mpi import MPI
-from .utils import decodeBytes, TelnetStripper
+from .utils import decodeBytes, multiReplace, TelnetStripper
 
 
 IAC_GA = IAC + GA
@@ -162,11 +162,11 @@ class Mapper(threading.Thread, World):
 				data = stripper.process(data)
 				if data is None:
 					continue
-				received = IGNORE_TAGS_REGEX.sub("", decodeBytes(data))
-				received = ANSI_COLOR_REGEX.sub("", received)
-				received = received.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&#39;", "'").replace("&quot;", '"').replace("\r\n", "\n")
-				movementForcedSearch = MOVEMENT_FORCED_REGEX.search(received)
-				if movementForcedSearch or MOVEMENT_PREVENTED_REGEX.search(received):
+				data = MAPPER_IGNORE_TAGS_REGEX.sub(b"", data)
+				data = ANSI_COLOR_REGEX.sub(b"", data)
+				data = decodeBytes(multiReplace(data, XML_UNESCAPE_PATTERNS))
+				movementForcedSearch = MOVEMENT_FORCED_REGEX.search(data)
+				if movementForcedSearch or MOVEMENT_PREVENTED_REGEX.search(data):
 					self.stopRun(verbose=False)
 				if movementForcedSearch and self.isSynced:
 					if movementForcedSearch.group("ignore"):
@@ -176,7 +176,7 @@ class Mapper(threading.Thread, World):
 					else:
 						self.isSynced = False
 						self.clientSend("Forced movement, no longer synced.")
-				roomSearch = ROOM_TAGS_REGEX.search(received)
+				roomSearch = ROOM_TAGS_REGEX.search(data)
 				if not roomSearch:
 					continue
 				roomDict = roomSearch.groupdict()
@@ -263,7 +263,7 @@ class Server(threading.Thread):
 			if self.isTinTin:
 				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
 				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
-				data = data.replace(b"&amp;", b"&").replace(b"&lt;", b"<").replace(b"&gt;", b">").replace(b"&#39;", b"'").replace(b"&quot;", b'"')
+				data = multiReplace(data, XML_UNESCAPE_PATTERNS)
 			self._client.sendall(data)
 
 

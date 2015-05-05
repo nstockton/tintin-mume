@@ -17,7 +17,7 @@ RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?
 
 USER_COMMANDS_REGEX = re.compile(br"^(?P<command>rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?$")
 
-IGNORE_TAGS_REGEX = re.compile(r"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
+MAPPER_IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
 TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|west|up|down))?/>|<[/]?(?:xml|terrain|magic|weather|room|exits|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
@@ -27,7 +27,7 @@ ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>nor
 
 EXIT_TAGS_REGEX = re.compile(r"(?P<direction>{directions})".format(directions="|".join(DIRECTIONS)))
 
-ANSI_COLOR_REGEX = re.compile(r"\x1b\[[0-9;]+[m]")
+ANSI_COLOR_REGEX = re.compile(br"\x1b\[[\d;]+m")
 
 AVOID_DYNAMIC_DESC_REGEX = re.compile(r"Some roots lie here waiting to ensnare weary travellers\.|The remains of a clump of roots lie here in a heap of rotting compost\.|A clump of roots is here, fighting|Some withered twisted roots writhe towards you\.|Black roots shift uneasily all around you\.|black tangle of roots|Massive roots shift uneasily all around you\.|rattlesnake")
 
@@ -181,3 +181,13 @@ TERRAIN_SYMBOLS = {
 	"U": "underwater",
 	"~": "water"
 }
+
+XML_UNESCAPE_PATTERNS = (
+	(b"&lt;", b"<"),
+	(b"&gt;", b">"),
+	(b"&quot;", b"\""),
+	(b"&#39;", b"'"),
+	(b"&apos;", b"'"),
+	(b"&amp;", b"&"),
+	(b"\r\n", b"\n")
+)
