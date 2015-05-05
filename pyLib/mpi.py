@@ -15,7 +15,6 @@ from .utils import decodeBytes, TelnetStripper
 
 MPI_REGEX = re.compile(r"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\d+)(?:\n))?(?P<description>.+?)\n(?P<body>.*)", re.DOTALL | re.MULTILINE)
 TMP_DIR = tempfile.gettempdir()
-IAC = b"\xff"
 
 class MPI(threading.Thread):
 	def __init__(self, client, server, mpiQueue, isTinTin=None):

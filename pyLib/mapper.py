@@ -5,6 +5,7 @@ try:
 except ImportError:
 	from queue import Queue
 import socket
+from telnetlib import IAC
 import threading
 
 from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
@@ -12,8 +13,6 @@ from .mapperworld import iterItems, Room, Exit, World
 from .mpi import MPI
 from .utils import decodeBytes, TelnetStripper
 
-
-IAC = b"\xff"
 
 class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue):
