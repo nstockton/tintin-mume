@@ -96,10 +96,7 @@
 
 #action {^If you have never played MUME before, type NEW to create a new character,$} {
 	#python sound.load();
-	xpReset;
-	#send {~$#EI};
-	#send {~$#EX1\n3};
-	#send {~$#EP2\nG}
+	xpReset
 }
 
 #action {^{Reconnecting|Welcome to the land of Middle-earth\. May your visit here be\.\.\. interesting}.$} {

@@ -5,7 +5,7 @@ try:
 except ImportError:
 	from queue import Queue
 import socket
-from telnetlib import IAC
+from telnetlib import IAC, DO, GA, TTYPE, NAWS
 import threading
 
 from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS
@@ -13,6 +13,8 @@ from .mapperworld import iterItems, Room, Exit, World
 from .mpi import MPI
 from .utils import decodeBytes, TelnetStripper
 
+
+IAC_GA = IAC + GA
 
 class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue):
@@ -241,10 +243,20 @@ class Server(threading.Thread):
 		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") != b"prompt" else b""))
 
 	def run(self):
+		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
+		encounteredInitialOutput = False
 		while True:
 			data = self._server.recv(4096)
 			if not data:
 				break
+			elif not encounteredInitialOutput and data.startswith(initialOutput):
+				# Identify for Mume Remote Editing.
+				self._server.sendall(b"~$#EI\n")
+				# Turn on XML mode.
+				self._server.sendall(b"~$#EX1\n3\n")
+				# Tell the Mume server to put IAC-GA at end of prompts.
+				self._server.sendall(b"~$#EP2\nG\n")
+				encounteredInitialOutput = True
 			# False tells the mapper thread that the data is from the Mume server, and *not* from the user's Mud client.
 			self._mapperQueue.put((False, data))
 			self._mpiQueue.put(data)
