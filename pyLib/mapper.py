@@ -240,7 +240,7 @@ class Server(threading.Thread):
 		self.isTinTin = bool(isTinTin)
 
 	def upperMatch(self, match):
-		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") != b"prompt" else b""))
+		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b"\n").replace(b"\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") != b"prompt" else b""))
 
 	def run(self):
 		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
