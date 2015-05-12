@@ -193,6 +193,34 @@ class World(object):
 	def sortExits(self, exitsDict):
 		return sorted(iterItems(exitsDict), key=lambda direction: DIRECTIONS.index(direction[0]) if direction[0] in DIRECTIONS else len(DIRECTIONS))
 
+	def searchRooms(self, *args, **kwArgs):
+		exactMatch = bool(kwArgs.get("exactMatch"))
+		validArgs = ("name", "desc", "dynamicDesc", "note", "terrain", "light", "align", "portable", "ridable", "x", "y", "z", "mobFlags", "loadFlags", "exitFlags", "doorFlags", "to", "door")
+		kwArgs = dict((key, value.strip().lower()) for key, value in iterItems(kwArgs) if key.strip() in validArgs and value.strip())
+		results = []
+		if not kwArgs:
+			return results
+		for vnum, roomObj in iterItems(self.rooms):
+			keysMatched = 0
+			for key, value in iterItems(kwArgs):
+				if key in ("name", "desc", "dynamicDesc", "note"):
+					roomData = getattr(roomObj, key, "").strip().lower()
+					if exactMatch and roomData == value or value in roomData:
+						keysMatched += 1
+				elif key in ("terrain", "light", "align", "portable", "ridable", "x", "y", "z") and getattr(roomObj, key, "").strip().lower() == value:
+					keysMatched += 1
+				elif key in ("mobFlags", "loadFlags") and getattr(roomObj, key, set()).intersection(value):
+					keysMatched += 1
+			for direction, exitObj in iterItems(roomObj.exits):
+				for key, value in iterItems(kwArgs):
+					if key in ("exitFlags", "doorFlags") and getattr(exitObj, key, set()).intersection(value):
+						keysMatched += 1
+					elif key in ("to", "door") and getattr(exitObj, key, "").strip().lower() == value:
+						keysMatched += 1
+			if len(kwArgs) == keysMatched:
+				results.append((vnum, roomObj))
+		return results
+
 	def rlabel(self, *args):
 		if not args or not args[0]:
 			match = None
