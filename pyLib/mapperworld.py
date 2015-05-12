@@ -126,6 +126,8 @@ class World(object):
 				newExit.to = exitDict["to"]
 				newRoom.exits[direction] = newExit
 			self.rooms[vnum] = newRoom
+			roomDict.clear()
+			del roomDict
 		self.currentRoom = self.rooms["0"]
 		self.prevRoom = self.rooms["0"]
 		self.output("Map database loaded.")
@@ -189,7 +191,7 @@ class World(object):
 			json.dump(self.labels, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
 
 	def sortExits(self, exitsDict):
-		return sorted(iterItems(exitsDict), key=lambda direction:DIRECTIONS.index(direction[0]) if direction[0] in DIRECTIONS else len(DIRECTIONS))
+		return sorted(iterItems(exitsDict), key=lambda direction: DIRECTIONS.index(direction[0]) if direction[0] in DIRECTIONS else len(DIRECTIONS))
 
 	def rlabel(self, *args):
 		if not args or not args[0]:
