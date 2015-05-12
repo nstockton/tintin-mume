@@ -3,13 +3,13 @@ import sys
 
 IS_PYTHON_2 = sys.version_info[0] == 2
 
-MAP_FILE = "maps/arda.json"
+MAP_FILE = "arda.json"
 
-SAMPLE_MAP_FILE = "maps/arda.json.sample"
+SAMPLE_MAP_FILE = "arda.json.sample"
 
-LABELS_FILE = "data/room_labels.json"
+LABELS_FILE = "room_labels.json"
 
-SAMPLE_LABELS_FILE = "data/room_labels.json.sample"
+SAMPLE_LABELS_FILE = "room_labels.json.sample"
 
 DIRECTIONS = ["north", "east", "south", "west", "up", "down"]
 

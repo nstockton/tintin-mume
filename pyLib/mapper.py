@@ -10,9 +10,9 @@ import threading
 from timeit import default_timer
 
 from .mapperconstants import DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, MAPPER_IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS, XML_UNESCAPE_PATTERNS
-from .mapperworld import iterItems, Room, Exit, World
+from .mapperworld import Room, Exit, World
 from .mpi import MPI
-from .utils import decodeBytes, multiReplace, TelnetStripper
+from .utils import iterItems, decodeBytes, multiReplace, TelnetStripper
 
 
 IAC_GA = IAC + GA
@@ -234,7 +234,7 @@ class Proxy(threading.Thread):
 				data = self._client.recv(4096)
 			except socket.timeout:
 				continue
-			except BrokenPipeError:
+			except IOError:
 				self.close()
 				continue
 			if not data:

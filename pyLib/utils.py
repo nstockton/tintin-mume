@@ -1,19 +1,28 @@
-﻿from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA
+﻿import os.path
+import sys
+from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA
 
-from .mapperconstants import IS_PYTHON_2
 
+def getDirectoryPath(directory):
+	# This is needed for py2exe
+	try:
+		if sys.frozen or sys.importers:
+			return os.path.join(os.path.dirname(sys.executable), directory)
+	except AttributeError:
+		return os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", directory)
+
+def iterItems(dictionary, **kw):
+	try:
+		return iter(dictionary.iteritems(**kw))
+	except AttributeError:
+		return iter(dictionary.items(**kw))
 
 def multiReplace(text, replacements):
 	try:
-		# replacements is a dict in Python 2.
-		replacements = iter(replacements.iteritems())
+		replacements = iterItems(replacements)
 	except AttributeError:
-		try:
-			# Replacements is a dict in Python 3.
-			replacements = iter(replacements.items())
-		except AttributeError:
-			# replacements is a list of tuples.
-			pass
+		# replacements is a list of tuples.
+		pass
 	for pattern, substitution in replacements:
 		text = text.replace(pattern, substitution)
 	return text
@@ -46,8 +55,10 @@ class TelnetStripper(object):
 	def process(self, data):
 		for byte in data:
 			# in Python 2, byte will be an str type, while in Python 3, byte will be an int type.
-			if IS_PYTHON_2:
+			try:
 				byte = ord(byte)
+			except TypeError:
+				pass
 			if not self.inIAC:
 				if byte == self.IAC:
 					self.inIAC = True

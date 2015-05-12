@@ -8,9 +8,10 @@ import re
 import subprocess
 import textwrap
 
-from .mapperworld import iterItems, World
+from .mapperworld import World
 from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, TERRAIN_SYMBOLS
 from .terminalsize import get_terminal_size
+from .utils import iterItems
 
 
 class EmulatedWorld(World):

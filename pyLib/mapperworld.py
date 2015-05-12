@@ -12,12 +12,7 @@ except ImportError:
 	ujson = json
 
 from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS
-
-def iterItems(dictionary, **kw):
-	if IS_PYTHON_2:
-		return iter(dictionary.iteritems(**kw))
-	else:
-		return iter(dictionary.items(**kw))
+from .utils import iterItems, getDirectoryPath
 
 
 class Room(object):
@@ -69,20 +64,23 @@ class World(object):
 
 	def loadRooms(self):
 		self.output("Loading the JSon database file.")
-		if os.path.exists(MAP_FILE):
-			if not os.path.isdir(MAP_FILE):
-				path = MAP_FILE
+		mapDirectory = getDirectoryPath("maps")
+		mapFile = os.path.join(mapDirectory, MAP_FILE)
+		sampleMapFile = os.path.join(mapDirectory, SAMPLE_MAP_FILE)
+		if os.path.exists(mapFile):
+			if not os.path.isdir(mapFile):
+				path = mapFile
 			else:
 				path = None
-				self.output("Error: '{0}' is a directory, not a file.".format(MAP_FILE))
-		elif os.path.exists(SAMPLE_MAP_FILE):
-			if not os.path.isdir(SAMPLE_MAP_FILE):
-				path = SAMPLE_MAP_FILE
+				self.output("Error: '{0}' is a directory, not a file.".format(mapFile))
+		elif os.path.exists(sampleMapFile):
+			if not os.path.isdir(sampleMapFile):
+				path = sampleMapFile
 			else:
 				path = None
-				self.output("Error: '{0}' is a directory, not a file.".format(SAMPLE_MAP_FILE))
-		if not path:
-			return self.output("Error: neither '{0}' nor '{1}' can be found.".format(MAP_FILE, SAMPLE_MAP_FILE))
+				self.output("Error: '{0}' is a directory, not a file.".format(sampleMapFile))
+		else:
+			return self.output("Error: neither '{0}' nor '{1}' can be found.".format(mapFile, sampleMapFile))
 		try:
 			with codecs.open(path, "rb", encoding="utf-8") as fileObj:
 				db = ujson.load(fileObj)
@@ -134,6 +132,8 @@ class World(object):
 
 	def loadLabels(self):
 		def getLabels(fileName):
+			dataDirectory = getDirectoryPath("data")
+			fileName = os.path.join(dataDirectory, fileName)
 			if os.path.exists(fileName):
 				if not os.path.isdir(fileName):
 					try:
