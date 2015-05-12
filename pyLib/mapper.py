@@ -7,6 +7,7 @@ except ImportError:
 import socket
 from telnetlib import IAC, DO, GA, TTYPE, NAWS
 import threading
+from timeit import default_timer
 
 from .mapperconstants import DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, MAPPER_IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS, XML_UNESCAPE_PATTERNS
 from .mapperworld import iterItems, Room, Exit, World
@@ -20,6 +21,8 @@ class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue, isTinTin):
 		threading.Thread.__init__(self)
 		self.daemon = True
+		# Initialize the timer.
+		self.initTimer = default_timer()
 		self._client = client
 		self._server = server
 		self.mapperQueue = mapperQueue
@@ -39,6 +42,9 @@ class Mapper(threading.Thread, World):
 	def serverSend(self, msg):
 		self._server.sendall(msg.encode("utf-8").replace(IAC, IAC + IAC) + b"\r\n")
 		return None
+
+	def user_command_gettimer(self, *args):
+		self.clientSend("TIMER:%d:TIMER" % int((default_timer() - self.initTimer) * 1000))
 
 	def user_command_rinfo(self, *args):
 		self.clientSend("\n".join(self.rinfo(*args)))
