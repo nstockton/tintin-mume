@@ -89,6 +89,7 @@ MOVEMENT_FORCED_REGEX = re.compile("|".join([
 			r"You are washed blindly over the rocks\, and plummet sickeningly downwards\.\.\.",
 			r"Oops\! You walk off the bridge and fall into the rushing water below\!",
 			r"Holding your breath and with closed eyes\, you are squeezed below the surface of the water\.",
+			r"You tighten your grip as (:a Great Eagle|Gwaihir the Windlord) starts to descend fast\.",
 			r"Stepping on the lizard corpses\, you use some depressions in the wall for support\, push the muddy ceiling apart and climb out of the cave\."
 		]
 	)
