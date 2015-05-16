@@ -44,7 +44,10 @@ class Mapper(threading.Thread, World):
 		return None
 
 	def user_command_gettimer(self, *args):
-		self.clientSend("TIMER:%d:TIMER" % int((default_timer() - self.initTimer) * 1000))
+		self.clientSend("TIMER:%d:TIMER" % int(default_timer() - self.initTimer))
+
+	def user_command_gettimerms(self, *args):
+		self.clientSend("TIMERMS:%d:TIMERMS" % int((default_timer() - self.initTimer) * 1000))
 
 	def user_command_rinfo(self, *args):
 		self.clientSend("\n".join(self.rinfo(*args)))
