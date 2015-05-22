@@ -6,11 +6,6 @@ import json
 import os.path
 import re
 
-try:
-	import ujson
-except ImportError:
-	ujson = json
-
 from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS
 from .utils import iterItems, getDirectoryPath
 
@@ -83,7 +78,7 @@ class World(object):
 			return self.output("Error: neither '{0}' nor '{1}' can be found.".format(mapFile, sampleMapFile))
 		try:
 			with codecs.open(path, "rb", encoding="utf-8") as fileObj:
-				db = ujson.load(fileObj)
+				db = json.load(fileObj)
 		except IOError as e:
 			self.rooms = {}
 			return self.output("{0}: '{1}'".format(e.strerror, e.filename))
@@ -138,7 +133,7 @@ class World(object):
 				if not os.path.isdir(fileName):
 					try:
 						with codecs.open(fileName, "rb", encoding="utf-8") as fileObj:
-							return ujson.load(fileObj)
+							return json.load(fileObj)
 					except IOError as e:
 						self.output("{0}: '{1}'".format(e.strerror, e.filename))
 						return {}
@@ -182,12 +177,16 @@ class World(object):
 				newRoom["exits"][direction] = newExit
 			db[vnum] = newRoom
 		self.output("Saving the database in JSon format.")
-		with codecs.open(MAP_FILE, "wb", encoding="utf-8") as fileObj:
-			ujson.dump(db, fileObj)
+		mapDirectory = getDirectoryPath("maps")
+		mapFile = os.path.join(mapDirectory, MAP_FILE)
+		with codecs.open(mapFile, "wb", encoding="utf-8") as fileObj:
+			json.dump(db, fileObj)
 		self.output("Map Database saved.")
 
 	def saveLabels(self):
-		with codecs.open(LABELS_FILE, "wb", encoding="utf-8") as fileObj:
+		dataDirectory = getDirectoryPath("data")
+		labelsFile = os.path.join(dataDirectory, LABELS_FILE)
+		with codecs.open(labelsFile, "wb", encoding="utf-8") as fileObj:
 			json.dump(self.labels, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
 
 	def sortExits(self, exitsDict):
