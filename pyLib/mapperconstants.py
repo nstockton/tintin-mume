@@ -56,7 +56,7 @@ MOVEMENT_PREVENTED_REGEX = re.compile("^%s$" % "|".join([
 			r"You don\'t control your mount\!",
 			r"Your mount is too sensible to attempt such a feat\.",
 			r"Oops\! You cannot go there riding\!",
-			r"A (?:pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf)(?: \(\w\))? is too exhausted\.",
+			r"A (?:pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf)(?: \(\w+\))? (?:is too exhausted|doesn't want you riding (?:him|her|it) anymore)\.",
 			r"You\'d better be swimming if you want to dive underwater\.",
 			r"You need to climb to go there\.",
 			r"You cannot climb there\.",
