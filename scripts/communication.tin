@@ -51,6 +51,7 @@ from pyLib import communication
 #var {replyTo} {}
 
 #var communicationIgnoreList[Aldereon] {true}
+#var communicationIgnoreList[Anarwen] {true}
 #var communicationIgnoreList[Angdil] {true}
 #var communicationIgnoreList[Barliman] {true}
 #var communicationIgnoreList[Celeborn] {true}
