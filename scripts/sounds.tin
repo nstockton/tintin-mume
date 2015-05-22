@@ -5,7 +5,7 @@ sound = sounds.Sounds()
 
 #gts
 
-#action {^*%+{Orc|Troll|Man|Woman|Elf|Half-Elf|Dwarf|Hobbit|Bear|Numenorean|N\xFAmen\xF3rean}*%*{standing|sitting|resting|sleeping|fighting|riding|nocks a missile|begins some strange|arrived|leaves}%+{((north|south|east|west|up|down|above|below|hiding place).*)?}$} {
+#action {^ENEMY:*%+{Orc|Troll|Man|Woman|Elf|Half-Elf|Dwarf|Hobbit|Bear|Numenorean|N\xFAmen\xF3rean}*%*{standing|sitting|resting|sleeping|fighting|riding|nocks a missile|begins some strange|arrived|leaves}%+{((north|south|east|west|up|down|above|below|hiding place).*)?}:ENEMY$} {
 	#if {("%2" == "Numenorean") || ("%2" == "N\xFAmen\xF3rean") || ("%2" == "Woman")} {#var {tmpPlayer} {Man}};
 	#else {#var {tmpPlayer} {%2}};
 	#if {"%4" == "nocks a missile"} {#var {tmpAction} {shooting}};
