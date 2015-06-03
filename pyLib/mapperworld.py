@@ -6,16 +6,16 @@ import json
 import os.path
 import re
 
-from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS
-from .utils import iterItems, getDirectoryPath
+from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, REVERSE_DIRECTIONS
+from .utils import iterItems, getDirectoryPath, regexFuzzy
 
 
 class Room(object):
-	def __init__(self):
+	def __init__(self, vnum):
+		self.vnum = vnum
 		self.name = ""
 		self.desc = ""
 		self.dynamicDesc = ""
-		self.vnum = ""
 		self.note = ""
 		self.terrain = "undefined"
 		self.light = "undefined"
@@ -38,8 +38,8 @@ class Room(object):
 
 class Exit(object):
 	def __init__(self):
-		self.to = ""
-		self.exitFlags = set()
+		self.to = "undefined"
+		self.exitFlags = set(["exit"])
 		self.door = ""
 		self.doorFlags = set()
 
@@ -48,8 +48,8 @@ class World(object):
 	def __init__(self):
 		self.rooms = {}
 		self.labels = {}
-		self.currentRoom = Room()
-		self.prevRoom = self.currentRoom
+		self.currentRoom = None
+		self.prevRoom = None
 		self.loadRooms()
 		self.loadLabels()
 
@@ -87,11 +87,10 @@ class World(object):
 			return self.output("Corrupted map database file.")
 		self.output("Creating room objects.")
 		for vnum, roomDict in iterItems(db):
-			newRoom = Room()
+			newRoom = Room(vnum)
 			newRoom.name = roomDict["name"]
 			newRoom.desc = roomDict["desc"]
 			newRoom.dynamicDesc = roomDict["dynamicDesc"]
-			newRoom.vnum = vnum
 			newRoom.note = roomDict["note"]
 			newRoom.terrain = roomDict["terrain"]
 			newRoom.light = roomDict["light"]
@@ -162,16 +161,16 @@ class World(object):
 			newRoom["align"] = roomObj.align
 			newRoom["portable"] = roomObj.portable
 			newRoom["ridable"] = roomObj.ridable
-			newRoom["mobFlags"] = list(roomObj.mobFlags)
-			newRoom["loadFlags"] = list(roomObj.loadFlags)
+			newRoom["mobFlags"] = sorted(roomObj.mobFlags)
+			newRoom["loadFlags"] = sorted(roomObj.loadFlags)
 			newRoom["x"] = roomObj.x
 			newRoom["y"] = roomObj.y
 			newRoom["z"] = roomObj.z
 			newRoom["exits"] = {}
 			for direction, exitObj in iterItems(roomObj.exits):
 				newExit = {}
-				newExit["exitFlags"] = list(exitObj.exitFlags)
-				newExit["doorFlags"] = list(exitObj.doorFlags)
+				newExit["exitFlags"] = sorted(exitObj.exitFlags)
+				newExit["doorFlags"] = sorted(exitObj.doorFlags)
 				newExit["door"] = exitObj.door
 				newExit["to"] = exitObj.to
 				newRoom["exits"][direction] = newExit
@@ -180,7 +179,7 @@ class World(object):
 		mapDirectory = getDirectoryPath("maps")
 		mapFile = os.path.join(mapDirectory, MAP_FILE)
 		with codecs.open(mapFile, "wb", encoding="utf-8") as fileObj:
-			json.dump(db, fileObj)
+			json.dump(db, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
 		self.output("Map Database saved.")
 
 	def saveLabels(self):
@@ -191,6 +190,16 @@ class World(object):
 
 	def sortExits(self, exitsDict):
 		return sorted(iterItems(exitsDict), key=lambda direction: DIRECTIONS.index(direction[0]) if direction[0] in DIRECTIONS else len(DIRECTIONS))
+
+	def getVnum(self, roomObj=None):
+		result = None
+		if roomObj is None:
+			roomObj = self.currentRoom
+		for vnum, obj in iterItems(self.rooms):
+			if obj is roomObj:
+				result = vnum
+				break
+		return result
 
 	def searchRooms(self, *args, **kwArgs):
 		exactMatch = bool(kwArgs.get("exactMatch"))
@@ -219,6 +228,229 @@ class World(object):
 			if len(kwArgs) == keysMatched:
 				results.append((vnum, roomObj))
 		return results
+
+	def rnote(self, *args):
+		if not args or not args[0].strip():
+			return "Room note set to '%s'. Use 'rnote [text]' to change it." % self.currentRoom.note
+		self.currentRoom.note = args[0].strip()
+		return "Room note now set to '%s'." % self.currentRoom.note
+
+	def ralign(self, *args):
+		validValues = ("good", "neutral", "evil", "undefined")
+		if not args or not args[0] or args[0].strip().lower() not in validValues:
+			return "Room alignment set to '%s'. Use 'ralign [%s]' to change it." % (self.currentRoom.align, " | ".join(validValues))
+		self.currentRoom.align = args[0].strip().lower()
+		return "Setting room align to '%s'." % self.currentRoom.align
+
+	def rlight(self, *args):
+		if not args or not args[0] or args[0].strip() not in LIGHT_SYMBOLS and args[0].strip().lower() not in LIGHT_SYMBOLS.values():
+			return "Room light set to '%s'. Use 'rlight [%s]' to change it." % (self.currentRoom.light, " | ".join(set(LIGHT_SYMBOLS.values())))
+		try:
+			self.currentRoom.light = LIGHT_SYMBOLS[args[0].strip()]
+		except KeyError:
+			self.currentRoom.light = args[0].strip().lower()
+		return "Setting room light to '%s'." % self.currentRoom.light
+
+	def rportable(self, *args):
+		validValues = ("portable", "notportable", "undefined")
+		if not args or not args[0] or args[0].strip().lower() not in validValues:
+			return "Room portable set to '%s'. Use 'rportable [%s]' to change it." % (self.currentRoom.portable, " | ".join(validValues))
+		self.currentRoom.portable = args[0].strip().lower()
+		return "Setting room portable to '%s'." % self.currentRoom.portable
+
+	def rridable(self, *args):
+		validValues = ("ridable", "notridable", "undefined")
+		if not args or not args[0] or args[0].strip().lower() not in validValues:
+			return "Room ridable set to '%s'. Use 'rridable [%s]' to change it." % (self.currentRoom.ridable, " | ".join(validValues))
+		self.currentRoom.ridable = args[0].strip().lower()
+		return "Setting room ridable to '%s'." % self.currentRoom.ridable
+
+	def rterrain(self, *args):
+		if not args or not args[0] or args[0].strip() not in TERRAIN_SYMBOLS and args[0].strip().lower() not in TERRAIN_SYMBOLS.values():
+			return "Room terrain set to '%s'. Use 'rterrain [%s | undefined]' to change it." % (self.currentRoom.terrain, " | ".join(TERRAIN_SYMBOLS.values()))
+		try:
+			self.currentRoom.terrain = TERRAIN_SYMBOLS[args[0].strip()]
+		except KeyError:
+			self.currentRoom.terrain = args[0].strip().lower()
+		return "Setting room terrain to '%s'." % self.currentRoom.terrain
+
+	def rx(self, *args):
+		if args and args[0] and args[0].strip():
+			try:
+				self.currentRoom.x = int(args[0].strip())
+				return "Room X coordinate now set to '%s'." % self.currentRoom.x
+			except ValueError:
+				return "Error: room coordinates must be comprised of digits only."
+		return "Setting room coordinate X to '%s'. Use 'rx [digit]' to change it." % self.currentRoom.x
+
+	def ry(self, *args):
+		if args and args[0] and args[0].strip():
+			try:
+				self.currentRoom.y = int(args[0].strip())
+				return "Room Y coordinate now set to '%s'." % self.currentRoom.y
+			except ValueError:
+				return "Error: room coordinates must be comprised of digits only."
+		return "Setting room coordinate Y to '%s'. Use 'ry [digit]' to change it." % self.currentRoom.y
+
+	def rz(self, *args):
+		if args and args[0] and args[0].strip():
+			try:
+				self.currentRoom.z = int(args[0].strip())
+				return "Room Z coordinate now set to '%s'." % self.currentRoom.z
+			except ValueError:
+				return "Error: room coordinates must be comprised of digits only."
+		return "Setting room coordinate Z to '%s'. Use 'rz [digit]' to change it." % self.currentRoom.z
+
+	def rmobflags(self, *args):
+		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_MOB_FLAGS)))
+		try:
+			matchDict = regex.match(args[0].strip().lower()).groupdict()
+		except (NameError, IndexError, AttributeError):
+			return "Mob flags set to '%s'. Use 'rmobflags [add | remove] [%s]' to change them." % (", ".join(self.currentRoom.mobFlags), " | ".join(VALID_MOB_FLAGS))
+		if "remove".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.mobFlags:
+				self.currentRoom.mobFlags.remove(matchDict["flag"])
+				return "Mob flag '%s' removed." % matchDict["flag"]
+			else:
+				return "Mob flag '%s' not set." % matchDict["flag"]
+		elif "add".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.mobFlags:
+				return "Mob flag '%s' already set." % matchDict["flag"]
+			else:
+				self.currentRoom.mobFlags.add(matchDict["flag"])
+				return "Mob flag '%s' added." % matchDict["flag"]
+
+	def rloadflags(self, *args):
+		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_LOAD_FLAGS)))
+		try:
+			matchDict = regex.match(args[0].strip().lower()).groupdict()
+		except (NameError, IndexError, AttributeError):
+			return "Load flags set to '%s'. Use 'rloadflags [add | remove] [%s]' to change them." % (", ".join(self.currentRoom.loadFlags), " | ".join(VALID_LOAD_FLAGS))
+		if "remove".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.loadFlags:
+				self.currentRoom.loadFlags.remove(matchDict["flag"])
+				return "Load flag '%s' removed." % matchDict["flag"]
+			else:
+				return "Load flag '%s' not set." % matchDict["flag"]
+		elif "add".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.loadFlags:
+				return "Load flag '%s' already set." % matchDict["flag"]
+			else:
+				self.currentRoom.loadFlags.add(matchDict["flag"])
+				return "Load flag '%s' added." % matchDict["flag"]
+
+	def exitflags(self, *args):
+		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<flag>%s)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_EXIT_FLAGS), regexFuzzy(DIRECTIONS)))
+		try:
+			matchDict = regex.match(args[0].strip().lower()).groupdict()
+		except (NameError, IndexError, AttributeError):
+			return "Syntax: 'exitflags [add | remove] [%s] [%s]'." % (" | ".join(VALID_EXIT_FLAGS), " | ".join(DIRECTIONS))
+		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
+		if direction not in self.currentRoom.exits:
+			return "Exit %s does not exist." % direction
+		elif not matchDict["mode"]:
+			return "Exit flags '%s' set to '%s'." % (direction, ", ".join(self.currentRoom.exits[direction].exitFlags))
+		elif "remove".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.exits[direction].exitFlags:
+				self.currentRoom.exits[direction].exitFlags.remove(matchDict["flag"])
+				return "Exit flag '%s' in direction '%s' removed." % (matchDict["flag"], direction)
+			else:
+				return "Exit flag '%s' in direction '%s' not set." % (matchDict["flag"], direction)
+		elif "add".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.exits[direction].exitFlags:
+				return "Exit flag '%s' in direction '%s' already set." % (matchDict["flag"], direction)
+			else:
+				self.currentRoom.exits[direction].exitFlags.add(matchDict["flag"])
+				return "Exit flag '%s' in direction '%s' added." % (matchDict["flag"], direction)
+
+	def doorflags(self, *args):
+		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<flag>%s)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_DOOR_FLAGS), regexFuzzy(DIRECTIONS)))
+		try:
+			matchDict = regex.match(args[0].strip().lower()).groupdict()
+		except (NameError, IndexError, AttributeError):
+			return "Syntax: 'doorflags [add | remove] [%s] [%s]'." % (" | ".join(VALID_DOOR_FLAGS), " | ".join(DIRECTIONS))
+		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
+		if direction not in self.currentRoom.exits:
+			return "Exit %s does not exist." % direction
+		elif not matchDict["mode"]:
+			return "Door flags '%s' set to '%s'." % (direction, ", ".join(self.currentRoom.exits[direction].doorFlags))
+		elif "remove".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.exits[direction].doorFlags:
+				self.currentRoom.exits[direction].doorFlags.remove(matchDict["flag"])
+				return "Door flag '%s' in direction '%s' removed." % (matchDict["flag"], direction)
+			else:
+				return "Door flag '%s' in direction '%s' not set." % (matchDict["flag"], direction)
+		elif "add".startswith(matchDict["mode"]):
+			if matchDict["flag"] in self.currentRoom.exits[direction].doorFlags:
+				return "Door flag '%s' in direction '%s' already set." % (matchDict["flag"], direction)
+			else:
+				self.currentRoom.exits[direction].doorFlags.add(matchDict["flag"])
+				return "Door flag '%s' in direction '%s' added." % (matchDict["flag"], direction)
+
+	def secret(self, *args):
+		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<name>[A-Za-z]+)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), regexFuzzy(DIRECTIONS)))
+		try:
+			matchDict = regex.match(args[0].strip().lower()).groupdict()
+		except (NameError, IndexError, AttributeError):
+			return "Syntax: 'secret [add | remove] [name] [%s]'." % " | ".join(DIRECTIONS)
+		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
+		if matchDict["mode"] and "add".startswith(matchDict["mode"]):
+			if not matchDict["name"]:
+				return "Error: 'add' expects a name for the secret."
+			elif direction not in self.currentRoom.exits:
+				self.currentRoom.exits[direction] = Exit()
+			self.currentRoom.exits[direction].exitFlags.add("door")
+			self.currentRoom.exits[direction].doorFlags.add("hidden")
+			self.currentRoom.exits[direction].door = matchDict["name"]
+			return "Adding secret '%s' to direction '%s'." % (matchDict["name"], direction)
+		elif direction not in self.currentRoom.exits:
+			return "Exit %s does not exist." % direction
+		elif not self.currentRoom.exits[direction].door:
+			return "No secret %s of here." % direction
+		elif not matchDict["mode"]:
+			return "Exit '%s' has secret '%s'." % (direction, self.currentRoom.exits[direction].door)
+		elif "remove".startswith(matchDict["mode"]):
+			if "door" in self.currentRoom.exits[direction].exitFlags:
+				self.currentRoom.exits[direction].exitFlags.remove("door")
+			if "hidden" in self.currentRoom.exits[direction].doorFlags:
+				self.currentRoom.exits[direction].doorFlags.remove("hidden")
+			self.currentRoom.exits[direction].door = ""
+			return "Secret %s removed." % direction
+
+	def rlink(self, *args):
+		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<oneway>%s)\s+)?((?P<vnum>\d+|undefined)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), regexFuzzy("oneway"), regexFuzzy(DIRECTIONS)))
+		try:
+			matchDict = regex.match(args[0].strip().lower()).groupdict()
+		except (NameError, IndexError, AttributeError):
+			return "Syntax: 'rlink [add | remove] [oneway] [vnum] [%s]'." % " | ".join(DIRECTIONS)
+		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
+		if matchDict["mode"] and "add".startswith(matchDict["mode"]):
+			reversedDirection = REVERSE_DIRECTIONS[direction]
+			if not matchDict["vnum"]:
+				return "Error: 'add' expects a vnum or 'undefined'."
+			elif matchDict["vnum"] != "undefined" and matchDict["vnum"] not in self.rooms:
+				return "Error: vnum %s not in database." % matchDict["vnum"]
+			elif direction not in self.currentRoom.exits:
+				self.currentRoom.exits[direction] = Exit()
+			self.currentRoom.exits[direction].to = matchDict["vnum"]
+			if matchDict["vnum"] == "undefined":
+				return "Direction %s now undefined." % direction
+			elif not matchDict["oneway"]:
+				if reversedDirection not in self.rooms[matchDict["vnum"]].exits:
+					self.rooms[matchDict["vnum"]].exits[reversedDirection] = Exit()
+					self.rooms[matchDict["vnum"]].exits[reversedDirection].to = self.currentRoom.vnum
+					return "Linking direction %s to %s.\nLinked exit %s in second room with this room." % (direction, matchDict["vnum"], reversedDirection)
+				else:
+					return "Linking direction %s to %s.\nUnable to link exit %s in second room with this room: exit already defined." % (direction, matchDict["vnum"], reversedDirection)
+			else:
+				return "Linking direction %s one way to %s." % (direction, matchDict["vnum"])
+		elif direction not in self.currentRoom.exits:
+			return "Exit %s does not exist." % direction
+		elif not matchDict["mode"]:
+			return "Exit '%s' links to '%s'." % (direction, self.currentRoom.exits[direction].to)
+		elif "remove".startswith(matchDict["mode"]):
+			del self.currentRoom.exits[direction]
+			return "Exit %s removed." % direction
 
 	def rlabel(self, *args):
 		if not args or not args[0]:

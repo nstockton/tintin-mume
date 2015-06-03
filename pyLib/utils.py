@@ -3,6 +3,14 @@ import sys
 from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA
 
 
+def regexFuzzy(data):
+	if not data:
+		return ""
+	elif isinstance(data, str):
+		return "(".join(list(data)) + ")?" * (len(data) - 1)
+	elif isinstance(data, list):
+		return "|".join("(".join(list(item)) + ")?" * (len(item) - 1) for item in data)
+
 def getDirectoryPath(directory):
 	# This is needed for py2exe
 	try:

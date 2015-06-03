@@ -129,7 +129,7 @@ class EmulatedWorld(World):
 		elif vnum == "death":
 			return self.output("Deathtrap in that direction!")
 		elif vnum not in self.rooms:
-			return self.output("The vnum ({0}) in that direction is not in the database.".format(vnum))
+			return self.output("Error: no rooms in the database with vnum ({0}).".format(vnum))
 		self.currentRoom = self.rooms[vnum]
 		self.config["last_vnum"] = vnum
 		self.look()
@@ -234,7 +234,9 @@ class EmulatedWorld(World):
 				self.output("\n".join(result))
 		elif command == "rinfo":
 			self.output("\n".join(self.rinfo(arguments)))
-		elif command == "mapsave":
+		elif command in ("rnote", "ralign", "rlight", "rportable", "rridable", "rterrain", "rx", "ry", "rz", "rmobflags", "rloadflags", "exitflags", "doorflags", "secret", "rlink"):
+			self.output(getattr(self, command)(arguments))
+		elif command == "savemap":
 			self.saveRooms()
 		elif command.isdigit() or command in self.labels:
 			self.move(command)

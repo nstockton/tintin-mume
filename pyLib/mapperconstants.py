@@ -17,7 +17,7 @@ MPI_REGEX = re.compile(br"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\
 
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
-USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|rinfo|run|stop|savemap|sync|rlabel)(?:\s+(?P<arguments>.*))?$")
+USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|run|stop|rinfo|savemap|sync|rnote|ralign|rlight|rportable|rridable|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
 MAPPER_IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
@@ -25,9 +25,9 @@ TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|we
 
 TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>enemy|prompt|name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
 
-ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>north|south|east|west|up|down))?/>)?<room><name>(?P<name>.+?)</name>[\r\n]*(?:<description>(?P<description>.*?)</description>)?(?P<dynamic>.*?)</room>(?:<exits>(?P<exits>.+?)</exits>)?.*?<prompt>(?P<prompt>.*?)</prompt>", re.DOTALL|re.MULTILINE)
+ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>north|south|east|west|up|down))?/>)?<room><name>(?P<name>.+?)</name>[\r\n]*(?:<description>(?P<description>.*?)</description>)?(?P<dynamic>.*?)</room>(?:<exits>(?P<exits>.+?)</exits>)?.*?<prompt>(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?></prompt>", re.DOTALL|re.MULTILINE)
 
-EXIT_TAGS_REGEX = re.compile(r"(?P<direction>{directions})".format(directions="|".join(DIRECTIONS)))
+EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
 
 ANSI_COLOR_REGEX = re.compile(br"\x1b\[[\d;]+m")
 
@@ -170,7 +170,7 @@ TERRAIN_SYMBOLS = {
 	":": "brush",
 	"O": "cavern",
 	"#": "city",
-	"?": "death",
+	"!": "death",
 	".": "field",
 	"f": "forest",
 	"(": "hills",
@@ -181,8 +181,85 @@ TERRAIN_SYMBOLS = {
 	"+": "road",
 	"%": "shallowwater",
 	"=": "tunnel",
+	"?": "undefined",
 	"U": "underwater",
 	"~": "water"
+}
+
+LIGHT_SYMBOLS = {
+	"@": "lit",
+	"*": "lit",
+	"!": "undefined",
+	")": "lit",
+	"o": "dark"
+}
+
+VALID_MOB_FLAGS = [
+	"rent",
+	"shop",
+	"weaponshop",
+	"armourshop",
+	"foodshop",
+	"petshop",
+	"guild",
+	"scoutguild",
+	"mageguild",
+	"clericguild",
+	"warriorguild",
+	"rangerguild",
+	"smob",
+	"quest",
+	"any",
+	"reserved2"
+]
+
+VALID_LOAD_FLAGS = [
+	"treasure",
+	"armour",
+	"weapon",
+	"water",
+	"food",
+	"herb",
+	"key",
+	"mule",
+	"horse",
+	"packhorse",
+	"trainedhorse",
+	"rohirrim",
+	"warg",
+	"boat",
+	"attention",
+	"tower"
+]
+
+VALID_EXIT_FLAGS = [
+	"exit",
+	"door",
+	"road",
+	"climb",
+	"random",
+	"special",
+	"no_match"
+]
+
+VALID_DOOR_FLAGS = [
+	"hidden",
+	"needkey",
+	"noblock",
+	"nobreak",
+	"nopick",
+	"delayed",
+	"reserved1",
+	"reserved2"
+]
+
+REVERSE_DIRECTIONS = {
+	"north": "south",
+	"south": "north",
+	"east": "west",
+	"west": "east",
+	"up": "down",
+	"down": "up"
 }
 
 XML_UNESCAPE_PATTERNS = (
@@ -192,5 +269,6 @@ XML_UNESCAPE_PATTERNS = (
 	(b"&#39;", b"'"),
 	(b"&apos;", b"'"),
 	(b"&amp;", b"&"),
-	(b"\r\n", b"\n")
+	(b"\r\n", b"\n"),
+	(b"\n\n", b"\n")
 )
