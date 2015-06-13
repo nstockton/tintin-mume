@@ -1,6 +1,6 @@
 #run {mapper} {python -B}
 
-from pyLib import mapper
+from mapperproxy.mapper import mapper
 
 #action {^MPICOMMAND:%1:MPICOMMAND$} {#mume {#system %1;#mapper continue}}
 
