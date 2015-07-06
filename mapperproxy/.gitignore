@@ -55,3 +55,8 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Misc
+python34.dll
+Mapper Proxy V*/
+Mapper Proxy V*.zip

@@ -1,5 +1,6 @@
 import glob
 from distutils.core import setup
+import os.path
 import shutil
 import sys
 
@@ -7,7 +8,8 @@ import py2exe
 
 APP_NAME = "Mapper Proxy"
 APP_AUTHOR = "Nick Stockton"
-APP_VERSION = "1.2"
+APP_VERSION = "1.3"
+PYTHON_DLL = ""
 
 # Remove old build and dist directories
 shutil.rmtree("build", ignore_errors=True)
@@ -28,7 +30,7 @@ class Target(object):
 		self.copyright = APP_AUTHOR
 		self.name = APP_NAME
 
-program = Target(description="%s V%s" % (APP_NAME, APP_VERSION), script="%s.py" % APP_NAME, dest_base=APP_NAME)
+program = Target(description="%s V%s" % (APP_NAME, APP_VERSION), script="startmapper.py", dest_base=APP_NAME)
 
 excludes = [
 	"_ssl",
@@ -71,7 +73,6 @@ dll_excludes = [
 
 # I need to fix this for Python 3
 packages = [
-	#"ujson",
 	#"encodings.ascii",
 	#"encodings.utf_8",
 	#"encodings.latin_1"
@@ -93,7 +94,8 @@ setup_options = {
 setup(options=setup_options, zipfile=None, console=[program], data_files=[("maps", glob.glob("maps\\*")), ("data", glob.glob("data\\*"))])
 
 # Copy our compressed version of python34.dll to destination folder
-shutil.copy("python34.dll", setup_options["py2exe"]["dist_dir"])
+if os.path.exists(PYTHON_DLL) and not os.path.isdir(PYTHON_DLL):
+	shutil.copy("python34.dll", setup_options["py2exe"]["dist_dir"])
 
 # Remove the build folder since we no longer need it.
 shutil.rmtree("build", ignore_errors=True)

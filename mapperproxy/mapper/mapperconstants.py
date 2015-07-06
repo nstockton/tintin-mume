@@ -21,7 +21,7 @@ MPI_REGEX = re.compile(br"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\
 
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
-USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|run|stop|rinfo|savemap|sync|rnote|ralign|rlight|rportable|rridable|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
+USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
 MAPPER_IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
@@ -256,6 +256,15 @@ VALID_DOOR_FLAGS = [
 	"reserved1",
 	"reserved2"
 ]
+
+DIRECTION_COORDINATES = {
+	"north": (0, -1, 0),
+	"south": (0, 1, 0),
+	"west": (-1, 0, 0),
+	"east": (1, 0, 0),
+	"up": (0, 0, 1),
+	"down": (0, 0, -1)
+}
 
 REVERSE_DIRECTIONS = {
 	"north": "south",

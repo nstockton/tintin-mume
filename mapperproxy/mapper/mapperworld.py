@@ -8,7 +8,7 @@ import json
 import os.path
 import re
 
-from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, REVERSE_DIRECTIONS
+from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, DIRECTION_COORDINATES, REVERSE_DIRECTIONS
 from .utils import iterItems, getDirectoryPath, regexFuzzy
 
 
@@ -48,6 +48,7 @@ class Exit(object):
 
 class World(object):
 	def __init__(self):
+		self.isSynced = False
 		self.rooms = {}
 		self.labels = {}
 		self.currentRoom = None
@@ -203,6 +204,36 @@ class World(object):
 				break
 		return result
 
+	def coordinatesAddDirection(self, first, second):
+		if first in DIRECTIONS:
+			first = DIRECTION_COORDINATES[first]
+		if second in DIRECTIONS:
+			second = DIRECTION_COORDINATES[second]
+		return tuple(sum(coord) for coord in zip(first, second))
+
+	def getNewVnum(self):
+		return str(max(int(i) for i in self.rooms) + 1)
+
+	def rdelete(self, *args):
+		if args and args[0] is not None and args[0].strip().isdigit():
+			if args[0].strip() in self.rooms:
+				vnum = args[0].strip()
+			else:
+				return "Error: the vnum '%s' does not exist." % args[0].strip()
+		elif self.isSynced:
+			vnum = self.currentRoom.vnum
+			self.isSynced = False
+			self.currentRoom = self.rooms["0"]
+		else:
+			return "Syntax: rdelete [vnum]"
+		output = "Deleting room '%s' with name '%s'." % (vnum, self.rooms[vnum].name)
+		for roomVnum, roomObj in iterItems(self.rooms):
+			for direction, exitObj in iterItems(roomObj.exits):
+				if exitObj.to == vnum:
+					self.rooms[roomVnum].exits[direction].to = "undefined"
+		del self.rooms[vnum]
+		return output
+
 	def searchRooms(self, *args, **kwArgs):
 		exactMatch = bool(kwArgs.get("exactMatch"))
 		validArgs = ("name", "desc", "dynamicDesc", "note", "terrain", "light", "align", "portable", "ridable", "x", "y", "z", "mobFlags", "loadFlags", "exitFlags", "doorFlags", "to", "door")
@@ -232,7 +263,7 @@ class World(object):
 		return results
 
 	def rnote(self, *args):
-		if not args or not args[0].strip():
+		if not args or args[0] is None or not args[0].strip():
 			return "Room note set to '%s'. Use 'rnote [text]' to change it." % self.currentRoom.note
 		self.currentRoom.note = args[0].strip()
 		return "Room note now set to '%s'." % self.currentRoom.note
@@ -280,28 +311,28 @@ class World(object):
 		if args and args[0] and args[0].strip():
 			try:
 				self.currentRoom.x = int(args[0].strip())
-				return "Room X coordinate now set to '%s'." % self.currentRoom.x
+				return "Setting room X coordinate to '%s'." % self.currentRoom.x
 			except ValueError:
 				return "Error: room coordinates must be comprised of digits only."
-		return "Setting room coordinate X to '%s'. Use 'rx [digit]' to change it." % self.currentRoom.x
+		return "Room coordinate X set to '%s'. Use 'rx [digit]' to change it." % self.currentRoom.x
 
 	def ry(self, *args):
 		if args and args[0] and args[0].strip():
 			try:
 				self.currentRoom.y = int(args[0].strip())
-				return "Room Y coordinate now set to '%s'." % self.currentRoom.y
+				return "Setting room Y coordinate to '%s'." % self.currentRoom.y
 			except ValueError:
 				return "Error: room coordinates must be comprised of digits only."
-		return "Setting room coordinate Y to '%s'. Use 'ry [digit]' to change it." % self.currentRoom.y
+		return "Room coordinate Y set to '%s'. Use 'ry [digit]' to change it." % self.currentRoom.y
 
 	def rz(self, *args):
 		if args and args[0] and args[0].strip():
 			try:
 				self.currentRoom.z = int(args[0].strip())
-				return "Room Z coordinate now set to '%s'." % self.currentRoom.z
+				return "Setting room Z coordinate to '%s'." % self.currentRoom.z
 			except ValueError:
 				return "Error: room coordinates must be comprised of digits only."
-		return "Setting room coordinate Z to '%s'. Use 'rz [digit]' to change it." % self.currentRoom.z
+		return "Room coordinate Z set to '%s'. Use 'rz [digit]' to change it." % self.currentRoom.z
 
 	def rmobflags(self, *args):
 		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_MOB_FLAGS)))
@@ -438,18 +469,18 @@ class World(object):
 			if matchDict["vnum"] == "undefined":
 				return "Direction %s now undefined." % direction
 			elif not matchDict["oneway"]:
-				if reversedDirection not in self.rooms[matchDict["vnum"]].exits:
+				if reversedDirection not in self.rooms[matchDict["vnum"]].exits or self.rooms[matchDict["vnum"]].exits[reversedDirection].to == "undefined":
 					self.rooms[matchDict["vnum"]].exits[reversedDirection] = Exit()
 					self.rooms[matchDict["vnum"]].exits[reversedDirection].to = self.currentRoom.vnum
-					return "Linking direction %s to %s.\nLinked exit %s in second room with this room." % (direction, matchDict["vnum"], reversedDirection)
+					return "Linking direction %s to %s with name '%s'.\nLinked exit %s in second room with this room." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "", reversedDirection)
 				else:
-					return "Linking direction %s to %s.\nUnable to link exit %s in second room with this room: exit already defined." % (direction, matchDict["vnum"], reversedDirection)
+					return "Linking direction %s to %s with name '%s'.\nUnable to link exit %s in second room with this room: exit already defined." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "", reversedDirection)
 			else:
-				return "Linking direction %s one way to %s." % (direction, matchDict["vnum"])
+				return "Linking direction %s one way to %s with name '%s'." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "")
 		elif direction not in self.currentRoom.exits:
 			return "Exit %s does not exist." % direction
 		elif not matchDict["mode"]:
-			return "Exit '%s' links to '%s'." % (direction, self.currentRoom.exits[direction].to)
+			return "Exit '%s' links to '%s' with name '%s'." % (direction, self.currentRoom.exits[direction].to, self.rooms[self.currentRoom.exits[direction].to].name if self.currentRoom.exits[direction].to in self.rooms else "")
 		elif "remove".startswith(matchDict["mode"]):
 			del self.currentRoom.exits[direction]
 			return "Exit %s removed." % direction
