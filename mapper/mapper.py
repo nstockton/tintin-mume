@@ -13,7 +13,7 @@ from telnetlib import IAC, DO, GA, TTYPE, NAWS
 import threading
 from timeit import default_timer
 
-from .mapperconstants import DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, MAPPER_IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
+from .mapperconstants import DIRECTIONS, REVERSE_DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, MAPPER_IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
 from .mapperworld import Room, Exit, World
 from .mpi import MPI
 from .utils import iterItems, decodeBytes, multiReplace, TelnetStripper, regexFuzzy
@@ -31,8 +31,10 @@ class Mapper(threading.Thread, World):
 		self._server = server
 		self.mapperQueue = mapperQueue
 		self.isTinTin = bool(isTinTin)
-		self.isSynced = False
 		self.autoMapping = False
+		self.autoUpdating = False
+		self.autoMerging = True
+		self.autoLinking = True
 		self.autoWalkDirections = []
 		self.lastPathFindQuery = ""
 		self.lastPrompt = ">"
@@ -74,6 +76,30 @@ class Mapper(threading.Thread, World):
 		else:
 			self.autoMapping = args[0].strip().lower() == "on"
 		self.clientSend("Auto Mapping %s." % ("on" if self.autoMapping else "off"))
+
+	def user_command_autoupdate(self, *args):
+		if not args or not args[0] or not args[0].strip():
+			self.autoUpdating = not self.autoUpdating
+		else:
+			self.autoUpdating = args[0].strip().lower() == "on"
+		self.clientSend("Auto Updating Room Names and Descriptions %s." % ("on" if self.autoUpdating else "off"))
+
+	def user_command_automerge(self, *args):
+		if not args or not args[0] or not args[0].strip():
+			self.autoMerging = not self.autoMerging
+		else:
+			self.autoMerging = args[0].strip().lower() == "on"
+		self.clientSend("Auto Merging %s." % ("on" if self.autoMerging else "off"))
+
+	def user_command_autolink(self, *args):
+		if not args or not args[0] or not args[0].strip():
+			self.autoLinking = not self.autoLinking
+		else:
+			self.autoLinking = args[0].strip().lower() == "on"
+		self.clientSend("Auto Linking %s." % ("on" if self.autoLinking else "off"))
+
+	def user_command_rdelete(self, *args):
+		self.clientSend(self.rdelete(*args))
 
 	def user_command_rnote(self, *args):
 		self.clientSend(self.rnote(*args))
@@ -236,6 +262,16 @@ class Mapper(threading.Thread, World):
 
 	def updateCurrentRoom(self, roomDict):
 		output = []
+		if self.autoUpdating:
+			if roomDict["name"] and self.currentRoom.name != roomDict["name"]:
+				self.currentRoom.name = roomDict["name"]
+				output.append("Updating room name.")
+			if roomDict["description"] and self.currentRoom.desc != roomDict["description"]:
+				self.currentRoom.desc = roomDict["description"]
+				output.append("Updating room description.")
+			if roomDict["dynamic"] and self.currentRoom.dynamicDesc != roomDict["dynamic"]:
+				self.currentRoom.dynamicDesc = roomDict["dynamic"]
+				output.append("Updating room dynamic description.")
 		try:
 			light = LIGHT_SYMBOLS[roomDict["light"]]
 			if light == "lit" and self.currentRoom.light != light:
@@ -245,6 +281,7 @@ class Mapper(threading.Thread, World):
 		try:
 			terrain = TERRAIN_SYMBOLS[roomDict["terrain"]]
 			if self.currentRoom.terrain not in (terrain, "random", "death"):
+				self.currentRoom.cost = TERRAIN_COSTS[terrain] if terrain in TERRAIN_COSTS else TERRAIN_COSTS["undefined"]
 				output.append(self.rterrain(terrain))
 		except KeyError:
 			pass
@@ -263,6 +300,10 @@ class Mapper(threading.Thread, World):
 				if direction not in self.currentRoom.exits:
 					output.append("Adding exit '%s' to current room." % direction)
 					self.currentRoom.exits[direction] = Exit()
+					if self.autoLinking:
+						vnums = [vnum for vnum, roomObj in iterItems(self.rooms) if self.coordinatesAddDirection((self.currentRoom.x, self.currentRoom.y, self.currentRoom.z), direction) == (roomObj.x, roomObj.y, roomObj.z)]
+						if len(vnums) == 1 and REVERSE_DIRECTIONS[direction] in self.rooms[vnums[0]].exits and self.rooms[vnums[0]].exits[REVERSE_DIRECTIONS[direction]].to == "undefined":
+							output.append(self.rlink("add %s %s" % (vnums[0], direction)))
 				roomExit = self.currentRoom.exits[direction]
 				if door and "door" not in roomExit.exitFlags:
 					output.append(self.exitflags("add door %s" % direction))
@@ -334,6 +375,31 @@ class Mapper(threading.Thread, World):
 			# Room data was received
 			if roomDict["movement"] and self.isSynced:
 				# The player has moved in an existing direction, and has entered an existing room in the database. Adjust the map accordingly.
+				if self.autoMapping and roomDict["movementDir"] and (roomDict["movementDir"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movementDir"]].to not in self.rooms):
+					if self.autoMerging:
+						foundRooms = self.searchRooms(exactMatch=True, name=roomDict["name"], desc=roomDict["description"]) if roomDict["name"] and roomDict["description"] else []
+					if self.autoMerging and len(foundRooms) == 1:
+						output = []
+						vnum, roomObj = foundRooms[0]
+						if self.autoLinking and REVERSE_DIRECTIONS[roomDict["movementDir"]] in roomObj.exits and roomObj.exits[REVERSE_DIRECTIONS[roomDict["movementDir"]]].to == "undefined":
+							output.append(self.rlink("add %s %s" % (vnum, roomDict["movementDir"])))
+						else:
+							output.append(self.rlink("add oneway %s %s" % (vnum, roomDict["movementDir"])))
+						output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
+						self.clientSend("\n".join(output))
+					else:
+						vnum = self.getNewVnum()
+						newRoom = Room(vnum)
+						newRoom.name = roomDict["name"] if roomDict["name"] else ""
+						newRoom.desc = roomDict["description"] if roomDict["description"] else ""
+						newRoom.dynamicDesc = roomDict["dynamic"] if roomDict["dynamic"] else ""
+						newRoom.x, newRoom.y, newRoom.z = self.coordinatesAddDirection((self.currentRoom.x, self.currentRoom.y, self.currentRoom.z), roomDict["movementDir"])
+						if REVERSE_DIRECTIONS[roomDict["movementDir"]] in roomDict["exits"]:
+							newRoom.exits[REVERSE_DIRECTIONS[roomDict["movementDir"]]] = Exit()
+							newRoom.exits[REVERSE_DIRECTIONS[roomDict["movementDir"]]].to = self.currentRoom.vnum
+						self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
+						self.rooms[vnum] = newRoom
+						self.currentRoom.exits[roomDict["movementDir"]].to = vnum
 				self.move(roomDict["movementDir"])
 				if self.autoWalkDirections:
 					# The player is auto-walking. Send the next direction to Mume.
