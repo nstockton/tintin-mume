@@ -20,6 +20,7 @@ class Room(object):
 		self.dynamicDesc = ""
 		self.note = ""
 		self.terrain = "undefined"
+		self.cost = TERRAIN_COSTS["undefined"]
 		self.light = "undefined"
 		self.align = "undefined"
 		self.portable = "undefined"
@@ -36,6 +37,16 @@ class Room(object):
 		# If we don't override this method, the path finder will throw an exception in Python 3 because heapq.heappush requires that any object passed to it be sortable.
 		# We'll return False because we want heapq.heappush to sort the tuples of movement cost and room object by the first item in the tuple (room cost), and the order of rooms with the same movement cost is irrelevant.
 		return False
+
+	def calculateCost(self):
+		try:
+			self.cost = TERRAIN_COSTS[self.terrain]
+		except KeyError:
+			self.cost = TERRAIN_COSTS["undefined"]
+		if self.vnum in AVOID_VNUMS or AVOID_DYNAMIC_DESC_REGEX.search(self.dynamicDesc):
+			self.cost += 1000.0
+		if self.ridable == "notridable":
+			self.cost += 5.0
 
 
 class Exit(object):
@@ -105,14 +116,7 @@ class World(object):
 			newRoom.x = roomDict["x"]
 			newRoom.y = roomDict["y"]
 			newRoom.z = roomDict["z"]
-			try:
-				newRoom.cost = TERRAIN_COSTS[newRoom.terrain]
-			except KeyError:
-				newRoom.cost = TERRAIN_COSTS["undefined"]
-			if vnum in AVOID_VNUMS or AVOID_DYNAMIC_DESC_REGEX.search(newRoom.dynamicDesc):
-				newRoom.cost += 1000.0
-			if newRoom.ridable == "notridable":
-				newRoom.cost += 5.0
+			newRoom.calculateCost()
 			for direction, exitDict in iterItems(roomDict["exits"]):
 				newExit = Exit()
 				newExit.exitFlags = set(exitDict["exitFlags"])
@@ -296,6 +300,7 @@ class World(object):
 		if not args or not args[0] or args[0].strip().lower() not in validValues:
 			return "Room ridable set to '%s'. Use 'rridable [%s]' to change it." % (self.currentRoom.ridable, " | ".join(validValues))
 		self.currentRoom.ridable = args[0].strip().lower()
+		self.currentRoom.calculateCost()
 		return "Setting room ridable to '%s'." % self.currentRoom.ridable
 
 	def rterrain(self, *args):
@@ -305,6 +310,7 @@ class World(object):
 			self.currentRoom.terrain = TERRAIN_SYMBOLS[args[0].strip()]
 		except KeyError:
 			self.currentRoom.terrain = args[0].strip().lower()
+		self.currentRoom.calculateCost()
 		return "Setting room terrain to '%s'." % self.currentRoom.terrain
 
 	def rx(self, *args):
