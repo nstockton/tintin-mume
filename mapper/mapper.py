@@ -281,7 +281,6 @@ class Mapper(threading.Thread, World):
 		try:
 			terrain = TERRAIN_SYMBOLS[roomDict["terrain"]]
 			if self.currentRoom.terrain not in (terrain, "random", "death"):
-				self.currentRoom.cost = TERRAIN_COSTS[terrain] if terrain in TERRAIN_COSTS else TERRAIN_COSTS["undefined"]
 				output.append(self.rterrain(terrain))
 		except KeyError:
 			pass
