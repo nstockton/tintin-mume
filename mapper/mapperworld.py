@@ -186,7 +186,7 @@ class World(object):
 		mapDirectory = getDirectoryPath("maps")
 		mapFile = os.path.join(mapDirectory, MAP_FILE)
 		with codecs.open(mapFile, "wb", encoding="utf-8") as fileObj:
-			json.dump(db, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
+			fileObj.write(json.dumps(db, sort_keys=True, indent=2, separators=(",", ": ")))
 		self.output("Map Database saved.")
 
 	def saveLabels(self):
