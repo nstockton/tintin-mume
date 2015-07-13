@@ -600,11 +600,11 @@ class World(object):
 		# https://en.wikipedia.org/wiki/Binary_heap
 		heapq.heapify(opened)
 		# Put the origin cost and origin room on the opened rooms heap to be processed first.
-		heapq.heappush(opened, (origin.cost, origin))
+		heapq.heappush(opened, (int(origin.cost * 100), origin))
 		# previously processed rooms.
 		closed = {}
 		# Ignore the origin from the search by adding it to the closed rooms dict.
-		closed[origin] = origin.cost
+		closed[origin] = int(origin.cost * 100)
 		# Search while there are rooms left in the opened heap.
 		while opened:
 			# Pop the last room cost and room object reference off the opened heap for processing.
@@ -635,12 +635,12 @@ class World(object):
 				# Get a reference to the room object that the exit leads to using the room's vnum.
 				neighborRoomObj = self.rooms[exitObj.to]
 				# The neighbor room cost should be the sum of all movement costs to get to the neighbor room from the origin room.
-				neighborRoomCost = currentRoomCost + neighborRoomObj.cost
+				neighborRoomCost = currentRoomCost + int(neighborRoomObj.cost * 100)
 				if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags:
-					neighborRoomCost += 5.0
+					neighborRoomCost += 500
 				if flags:
 					if neighborRoomObj.terrain in avoidTerrains:
-						neighborRoomCost += 10.0
+						neighborRoomCost += 1000
 				# We're only interested in the neighbor room if it hasn't been encountered yet, or if the cost of moving from the current room to the neighbor room is less than the cost of moving to the neighbor room from a previously discovered room.
 				if neighborRoomObj not in closed or closed[neighborRoomObj] > neighborRoomCost:
 					# Add the room object and room cost to the dict of closed rooms, and put it on the opened rooms heap to be processed.
