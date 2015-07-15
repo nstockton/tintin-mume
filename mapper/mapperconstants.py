@@ -21,7 +21,7 @@ MPI_REGEX = re.compile(br"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\
 
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
-USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
+USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
 MAPPER_IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
@@ -98,49 +98,6 @@ MOVEMENT_FORCED_REGEX = re.compile("|".join([
 		]
 	)
 )
-
-AVOID_VNUMS = [
-	"540",
-	"651",
-	"676",
-	"677",
-	"679",
-	"684",
-	"687",
-	"688",
-	"856",
-	"2361",
-	"7735",
-	"7736",
-	"7739",
-	"7746",
-	"7750",
-	"7760",
-	"7761",
-	"10905",
-	"10906",
-	"10907",
-	"10908",
-	"10909",
-	"10926",
-	"11602",
-	"11691",
-	"14967",
-	"16650",
-	"16713",
-	"17534",
-	"17538",
-	"17903",
-	"20764",
-	"20794",
-	"21229",
-	"34378",
-	"34402",
-	"95125",
-	"98025",
-	"98305",
-	"98647"
-]
 
 LEAD_BEFORE_ENTERING_VNUMS = [
 	"196",
@@ -243,6 +200,7 @@ VALID_EXIT_FLAGS = [
 	"climb",
 	"random",
 	"special",
+	"avoid",
 	"no_match"
 ]
 

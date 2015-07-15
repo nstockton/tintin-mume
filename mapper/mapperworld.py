@@ -8,7 +8,7 @@ import json
 import os.path
 import re
 
-from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, AVOID_VNUMS, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, DIRECTION_COORDINATES, REVERSE_DIRECTIONS
+from .mapperconstants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, DIRECTION_COORDINATES, REVERSE_DIRECTIONS
 from .utils import iterItems, getDirectoryPath, regexFuzzy
 
 
@@ -25,6 +25,7 @@ class Room(object):
 		self.align = "undefined"
 		self.portable = "undefined"
 		self.ridable = "undefined"
+		self.avoid = False
 		self.mobFlags = set()
 		self.loadFlags = set()
 		self.x = 0
@@ -43,7 +44,7 @@ class Room(object):
 			self.cost = TERRAIN_COSTS[self.terrain]
 		except KeyError:
 			self.cost = TERRAIN_COSTS["undefined"]
-		if self.vnum in AVOID_VNUMS or AVOID_DYNAMIC_DESC_REGEX.search(self.dynamicDesc):
+		if self.avoid or AVOID_DYNAMIC_DESC_REGEX.search(self.dynamicDesc):
 			self.cost += 1000.0
 		if self.ridable == "notridable":
 			self.cost += 5.0
@@ -111,6 +112,10 @@ class World(object):
 			newRoom.align = roomDict["align"]
 			newRoom.portable = roomDict["portable"]
 			newRoom.ridable = roomDict["ridable"]
+			try:
+				newRoom.avoid = roomDict["avoid"]
+			except KeyError:
+				pass
 			newRoom.mobFlags = set(roomDict["mobFlags"])
 			newRoom.loadFlags = set(roomDict["loadFlags"])
 			newRoom.x = roomDict["x"]
@@ -168,6 +173,7 @@ class World(object):
 			newRoom["align"] = roomObj.align
 			newRoom["portable"] = roomObj.portable
 			newRoom["ridable"] = roomObj.ridable
+			newRoom["avoid"] = roomObj.avoid
 			newRoom["mobFlags"] = sorted(roomObj.mobFlags)
 			newRoom["loadFlags"] = sorted(roomObj.loadFlags)
 			newRoom["x"] = roomObj.x
@@ -302,6 +308,14 @@ class World(object):
 		self.currentRoom.ridable = args[0].strip().lower()
 		self.currentRoom.calculateCost()
 		return "Setting room ridable to '%s'." % self.currentRoom.ridable
+
+	def ravoid(self, *args):
+		validValues = ("+", "-")
+		if not args or not args[0] or args[0].strip().lower() not in validValues:
+			return "Room avoid %s. Use 'ravoid [%s]' to change it." % ("enabled" if self.currentRoom.avoid else "disabled", " | ".join(validValues))
+		self.currentRoom.avoid = args[0].strip() == "+"
+		self.currentRoom.calculateCost()
+		return "%s room avoid." % ("Enabling" if self.currentRoom.avoid else "Disabling")
 
 	def rterrain(self, *args):
 		if not args or not args[0] or args[0].strip() not in TERRAIN_SYMBOLS and args[0].strip().lower() not in TERRAIN_SYMBOLS.values():
@@ -638,6 +652,8 @@ class World(object):
 				neighborRoomCost = currentRoomCost + int(neighborRoomObj.cost * 100)
 				if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags:
 					neighborRoomCost += 500
+				if "avoid" in exitObj.exitFlags:
+					neighborRoomCost += 100000
 				if flags:
 					if neighborRoomObj.terrain in avoidTerrains:
 						neighborRoomCost += 1000
