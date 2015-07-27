@@ -29,7 +29,7 @@ TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|we
 
 TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>enemy|prompt|name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
 
-ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>north|south|east|west|up|down))?/>)?<room><name>(?P<name>.+?)</name>[\r\n]*(?:<description>(?P<description>.*?)</description>)?(?P<dynamic>.*?)</room>(?:<exits>(?P<exits>.+?)</exits>)?.*?<prompt>(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?></prompt>", re.DOTALL|re.MULTILINE)
+ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>north|south|east|west|up|down))?/>)?.*?<room><name>(?P<name>.+?)</name>[\r\n]*(?:<description>(?P<description>.*?)</description>)?(?P<dynamic>.*?)</room>(?:<exits>(?P<exits>.+?)</exits>)?.*?<prompt>(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?></prompt>", re.DOTALL|re.MULTILINE)
 
 EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
 
