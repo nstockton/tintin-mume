@@ -456,16 +456,15 @@ class Proxy(threading.Thread):
 
 
 class Server(threading.Thread):
-	def __init__(self, client, server, mapperQueue, isTinTin=None):
+	def __init__(self, client, server, mapperQueue):
 		threading.Thread.__init__(self)
 		self.daemon = True
 		self._client = client
 		self._server = server
 		self._mapperQueue = mapperQueue
-		self.isTinTin = bool(isTinTin)
 
 	def upperMatch(self, match):
-		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b"\n").replace(b"\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") != b"prompt" else b""))
+		return b"".join((match.group("tag").upper(), b":", match.group("text").replace(b"\r\n", b"\n").replace(b"\n", b" ").strip() if match.group("text") else b"", b":", match.group("tag").upper(), b"\r\n" if match.group("tag") not in (b"prompt", b"enemy") else b""))
 
 	def run(self):
 		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
@@ -485,10 +484,9 @@ class Server(threading.Thread):
 				encounteredInitialOutput = True
 			# False tells the mapper thread that the data is from the Mume server, and *not* from the user's Mud client.
 			self._mapperQueue.put((False, data))
-			if self.isTinTin:
-				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
-				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
-				data = multiReplace(data, XML_UNESCAPE_PATTERNS)
+			data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
+			data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
+			data = multiReplace(data, XML_UNESCAPE_PATTERNS)
 			self._client.sendall(data)
 
 
@@ -515,7 +513,7 @@ def main(isTinTin=None):
 	mapperQueue = Queue()
 	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, isTinTin=isTinTin)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
-	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, isTinTin=isTinTin)
+	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
 	serverThread.start()
 	proxyThread.start()
 	mapperThread.start()
