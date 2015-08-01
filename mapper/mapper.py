@@ -500,7 +500,7 @@ def main(isTinTin=None):
 	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serverConnection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 	try:
-		serverConnection.connect(("193.134.218.99", 4242))
+		serverConnection.connect(("193.134.218.99", 443))
 	except TimeoutError:
 		clientConnection.sendall(b"\r\nError: server connection timed out!\r\n")
 		try:
