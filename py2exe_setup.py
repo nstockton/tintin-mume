@@ -8,7 +8,7 @@ import py2exe
 
 APP_NAME = "Mapper Proxy"
 APP_AUTHOR = "Nick Stockton"
-APP_VERSION = "1.3"
+APP_VERSION = "1.4"
 PYTHON_DLL = ""
 
 # Remove old build and dist directories

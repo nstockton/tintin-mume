@@ -66,5 +66,5 @@ class MPI(threading.Thread):
 				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
 				editorProcess.wait()
 			with open(fileName, "rb") as fileObj:
-				response = b"\n".join((self.mpiMatch["session"].replace(b"M", b"E"), fileObj.read().replace("\r", "").replace(IAC, IAC + IAC)))
+				response = b"\n".join((self.mpiMatch["session"].replace(b"M", b"E"), fileObj.read().replace(b"\r", b"").replace(IAC, IAC + IAC)))
 			self._server.sendall(b"".join((b"~$#EE", str(len(response)).encode("utf-8"), b"\n", response)))
