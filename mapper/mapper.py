@@ -8,7 +8,6 @@ except ImportError:
 	from queue import Queue
 import re
 import socket
-import sys
 from telnetlib import IAC, DO, GA, TTYPE, NAWS
 import threading
 from timeit import default_timer
@@ -370,6 +369,8 @@ class Mapper(threading.Thread, World):
 						self.clientSend(self.rridable("notridable"))
 					elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
 						self.clientSend(self.rridable("ridable"))
+			if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
+				self.sync(vnum="17189")
 			try:
 				roomDict = ROOM_TAGS_REGEX.search(data).groupdict()
 			except AttributeError:
@@ -475,8 +476,7 @@ class Server(threading.Thread):
 				break
 			elif not encounteredInitialOutput and data.startswith(initialOutput):
 				# Identify for Mume Remote Editing.
-				if sys.platform != "win32":
-					self._server.sendall(b"~$#EI\n")
+				self._server.sendall(b"~$#EI\n")
 				# Turn on XML mode.
 				self._server.sendall(b"~$#EX1\n3\n")
 				# Tell the Mume server to put IAC-GA at end of prompts.

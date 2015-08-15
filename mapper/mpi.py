@@ -6,6 +6,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 from telnetlib import IAC
 import tempfile
 import threading
@@ -23,8 +24,12 @@ class MPI(threading.Thread):
 		self._server = server
 		self.isTinTin = bool(isTinTin)
 		self.mpiMatch = mpiMatch
-		self.editor = os.getenv("TINTINEDITOR", "nano -w")
-		self.pager = os.getenv("TINTINPAGER", "less")
+		if sys.platform == "win32":
+			self.editor = "notepad"
+			self.pager = "notepad"
+		else:
+			self.editor = os.getenv("TINTINEDITOR", "nano -w")
+			self.pager = os.getenv("TINTINPAGER", "less")
 
 	def run(self):
 		if not self.mpiMatch:
@@ -37,7 +42,7 @@ class MPI(threading.Thread):
 		description = decodeBytes(self.mpiMatch["description"]) if self.mpiMatch["description"] else ""
 		if description:
 			length -= len(description) + 1
-		body = decodeBytes(self.mpiMatch["body"])[:length]
+		body = decodeBytes(self.mpiMatch["body"])[:length].replace("\r", "").replace("\n", "\r\n")
 		if command == "V":
 			fileName = os.path.join(TMP_DIR, "V%d.txt" % random.randint(1000, 9999))
 			with open(fileName, "wb") as fileObj:
@@ -61,5 +66,5 @@ class MPI(threading.Thread):
 				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
 				editorProcess.wait()
 			with open(fileName, "rb") as fileObj:
-				response = b"\n".join((self.mpiMatch["session"].replace(b"M", b"E"), fileObj.read().replace(IAC, IAC + IAC)))
+				response = b"\n".join((self.mpiMatch["session"].replace(b"M", b"E"), fileObj.read().replace("\r", "").replace(IAC, IAC + IAC)))
 			self._server.sendall(b"".join((b"~$#EE", str(len(response)).encode("utf-8"), b"\n", response)))
