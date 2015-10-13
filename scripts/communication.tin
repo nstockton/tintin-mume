@@ -58,6 +58,7 @@ from pyLib import communication
 #var communicationIgnoreList[Celebrindal] {true}
 #var communicationIgnoreList[Ciryariel] {true}
 #var communicationIgnoreList[Clint] {true}
+#var communicationIgnoreList[Curundil] {true}
 #var communicationIgnoreList[Daegil] {true}
 #var communicationIgnoreList[Ecthelion] {true}
 #var communicationIgnoreList[Elrond] {true}
@@ -68,5 +69,6 @@ from pyLib import communication
 #var communicationIgnoreList[Huor] {true}
 #var communicationIgnoreList[Nagrorh] {true}
 #var communicationIgnoreList[Nordri] {true}
+#var communicationIgnoreList[Sarion] {true}
 #var communicationIgnoreList[Sauron] {true}
 #var communicationIgnoreList[Gramps] {true}
