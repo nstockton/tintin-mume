@@ -138,7 +138,7 @@
 #alias {nti} {_time_check narrate}
 #alias {sti} {_time_check say}
 
-#action {^The day has begun.$} {_sync_event dawn 1}
+#action {^{(?:It seems as if )?}{[Tt]}he day has begun.$} {_sync_event dawn 1}
 #action {^Light gradually filters in, proclaiming a new sunrise outside.$} {_sync_event dawn}
 #action {^{(?:It seems as if )?}{[Tt]}he night has begun.$} {_sync_event dusk 1}
 #action {^The last ray of light fades, and all is swallowed up in darkness.$} {_sync_event dusk 1}
