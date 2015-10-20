@@ -146,10 +146,10 @@
 
 #action {^A huge clock is standing here.$} {#send {look at clock}}
 #action {^The current time is {[1-9]|1[0-2]}:{[0-5]\d} {[ap]m}.$} {_sync_precise %1 %2 %3}
-#action {^{([1-9]|1[0-2])([ap]m) on \w+|\w+}, the %d{st|nd|rd|th} of %w, Year {(\d{4})} of the Third Age.$} {
+#action {^{(?:It is )?([1-9]|1[0-2])([ap]m) on \w+|\w+}, the %d{st|nd|rd|th} of %w, {[yY]}ear {(\d{4,4})} of the Third Age.$} {
 	#var {current_day} {%4};
 	#var {current_month_name} {%6};
-	#var {current_year} {%7};
+	#var {current_year} {%8};
 	#foreach {$months[]} {i} {
 		#if {"$months[$i][name]" == "$current_month_name"} {
 			#math {current_month} {($i - 1) % 12 + 1};
