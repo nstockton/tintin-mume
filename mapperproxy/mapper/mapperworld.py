@@ -4,6 +4,7 @@
 
 import codecs
 import heapq
+import itertools
 import json
 import os.path
 import re
@@ -588,6 +589,33 @@ class World(object):
 			info.append("Door Flags: '{0}'".format(", ".join(exitcls.doorFlags)))
 		return info
 
+	def createSpeedWalk(self, directionsList):
+		"""Given a list of directions, return a string of the directions in standard speed walk format"""
+		def compressDirections(directionsBuffer):
+			speedWalkDirs = []
+			for direction, group in itertools.groupby(directionsBuffer):
+				lenGroup = len(list(group))
+				if lenGroup == 1:
+					speedWalkDirs.append(direction[0])
+				else:
+					speedWalkDirs.append("{0}{1}".format(lenGroup, direction[0]))
+			return speedWalkDirs
+		result = []
+		directionsBuffer = []
+		while directionsList:
+			item = directionsList.pop()
+			if item in DIRECTIONS:
+				directionsBuffer.append(item)
+			else:
+				# The item is not a direction, so process the directions buffer, clear the buffer, and add the resulting list plus the item to the result.
+				result.extend(compressDirections(directionsBuffer))
+				directionsBuffer = []
+				result.append(item)
+		# Process any remaining items in the directions buffer.
+		if directionsBuffer:
+			result.extend(compressDirections(directionsBuffer))
+		return "; ".join(result)
+
 	def pathFind(self, origin=None, destination=None, flags=[]):
 		"""Find the path"""
 		if not origin:
@@ -599,13 +627,21 @@ class World(object):
 		if not origin or not destination:
 			self.output("Error: Invalid origin or destination.")
 			return None
-		if origin == destination:
+		if origin is destination:
 			self.output("You are already there!")
 			return []
 		if flags:
-			avoidTerrains = [terrain for terrain in TERRAIN_COSTS if "no{0}".format(terrain) in flags]
+			avoidTerrains = frozenset(terrain for terrain in TERRAIN_COSTS if "no{0}".format(terrain) in flags)
 		else:
-			avoidTerrains = []
+			avoidTerrains = frozenset()
+		ignoreVnums = frozenset(("undefined", "death"))
+		isDestinationFunc = lambda currentRoomObj: currentRoomObj is destination
+		exitIgnoreFunc = lambda exitObj: exitObj.to in ignoreVnums
+		exitCostFunc = lambda exitObj, neighborRoomObj: 5 if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags else 0 + 1000 if "avoid" in exitObj.exitFlags else 0 + 10 if neighborRoomObj.terrain in avoidTerrains else 0
+		exitDestinationFunc = None # lambda exitObj, neighborRoomObj
+		return self._pathFind(origin, isDestinationFunc, exitIgnoreFunc, exitCostFunc, exitDestinationFunc)
+
+	def _pathFind(self, origin, isDestinationFunc=None, exitIgnoreFunc=None, exitCostFunc=None, exitDestinationFunc=None):
 		# Each key-value pare that gets added to this dict will be a parent room and child room respectively.
 		parents = {origin: origin}
 		# unprocessed rooms.
@@ -614,49 +650,26 @@ class World(object):
 		# https://en.wikipedia.org/wiki/Binary_heap
 		heapq.heapify(opened)
 		# Put the origin cost and origin room on the opened rooms heap to be processed first.
-		heapq.heappush(opened, (int(origin.cost * 100), origin))
+		heapq.heappush(opened, (origin.cost, origin))
 		# previously processed rooms.
 		closed = {}
 		# Ignore the origin from the search by adding it to the closed rooms dict.
-		closed[origin] = int(origin.cost * 100)
+		closed[origin] = origin.cost
 		# Search while there are rooms left in the opened heap.
 		while opened:
 			# Pop the last room cost and room object reference off the opened heap for processing.
 			currentRoomCost, currentRoomObj = heapq.heappop(opened)
-			if currentRoomObj == destination:
+			if isDestinationFunc and isDestinationFunc(currentRoomObj):
 				# We successfully found a path from the origin to the destination.
-				# find the path from the origin to the destination by traversing the rooms that we passed through to get here.
-				result = []
-				while currentRoomObj != origin:
-					currentRoomObj, direction = parents[currentRoomObj]
-					if currentRoomObj.vnum in LEAD_BEFORE_ENTERING_VNUMS and currentRoomObj.exits[direction].to not in LEAD_BEFORE_ENTERING_VNUMS and currentRoomObj != origin:
-						result.append("ride")
-					result.append(direction)
-					if currentRoomObj.exits[direction].to in LEAD_BEFORE_ENTERING_VNUMS and (currentRoomObj.vnum not in LEAD_BEFORE_ENTERING_VNUMS or currentRoomObj == origin):
-						result.append("lead")
-					if "door" in currentRoomObj.exits[direction].exitFlags:
-						if currentRoomObj.exits[direction].door:
-							result.append("open {0} {1}".format(currentRoomObj.exits[direction].door, direction))
-						else:
-							result.append("open {0} {1}".format("exit", direction))
-				return result
-			# If we're here, the current room isn't the destination.
+				break
 			# Loop through the exits, and process each room linked to the current room.
 			for exitDirection, exitObj in iterItems(currentRoomObj.exits):
-				# Ignore exits that link to undefined or death trap rooms.
-				if exitObj.to=="undefined" or exitObj.to=="death":
+				if exitIgnoreFunc and exitIgnoreFunc(exitObj):
 					continue
 				# Get a reference to the room object that the exit leads to using the room's vnum.
 				neighborRoomObj = self.rooms[exitObj.to]
 				# The neighbor room cost should be the sum of all movement costs to get to the neighbor room from the origin room.
-				neighborRoomCost = currentRoomCost + int(neighborRoomObj.cost * 100)
-				if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags:
-					neighborRoomCost += 500
-				if "avoid" in exitObj.exitFlags:
-					neighborRoomCost += 100000
-				if flags:
-					if neighborRoomObj.terrain in avoidTerrains:
-						neighborRoomCost += 1000
+				neighborRoomCost = currentRoomCost + neighborRoomObj.cost + exitCostFunc(exitObj, neighborRoomObj) if exitCostFunc else 0
 				# We're only interested in the neighbor room if it hasn't been encountered yet, or if the cost of moving from the current room to the neighbor room is less than the cost of moving to the neighbor room from a previously discovered room.
 				if neighborRoomObj not in closed or closed[neighborRoomObj] > neighborRoomCost:
 					# Add the room object and room cost to the dict of closed rooms, and put it on the opened rooms heap to be processed.
@@ -664,5 +677,25 @@ class World(object):
 					heapq.heappush(opened, (neighborRoomCost, neighborRoomObj))
 					# Since the current room is so far the most optimal way into the neighbor room, set it as the parent of the neighbor room.
 					parents[neighborRoomObj] = (currentRoomObj, exitDirection)
-		self.output("No routes found.")
-		return None
+					if exitDestinationFunc and exitDestinationFunc(exitObj, neighborRoomObj):
+						break
+		else:
+			# The while loop terminated normally (I.E. without encountering a break statement), and the destination was *not* found.
+			self.output("No routes found.")
+			return None
+		# The while statement was broken prematurely, meaning that the destination was found.
+		# Find the path from the origin to the destination by traversing the hierarchy of room parents, starting with the current room.
+		results = []
+		while currentRoomObj is not origin:
+			currentRoomObj, direction = parents[currentRoomObj]
+			if currentRoomObj.vnum in LEAD_BEFORE_ENTERING_VNUMS and currentRoomObj.exits[direction].to not in LEAD_BEFORE_ENTERING_VNUMS and currentRoomObj is not origin:
+				results.append("ride")
+			results.append(direction)
+			if currentRoomObj.exits[direction].to in LEAD_BEFORE_ENTERING_VNUMS and (currentRoomObj.vnum not in LEAD_BEFORE_ENTERING_VNUMS or currentRoomObj is origin):
+				results.append("lead")
+			if "door" in currentRoomObj.exits[direction].exitFlags:
+				if currentRoomObj.exits[direction].door:
+					results.append("open %s %s" % (currentRoomObj.exits[direction].door, direction))
+				else:
+					results.append("open %s %s" % ("exit", direction))
+		return results

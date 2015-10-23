@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import codecs
-import itertools
 import json
 import os.path
 import re
@@ -168,33 +167,6 @@ class EmulatedWorld(World):
 		"""Save the configuration to disk"""
 		with codecs.open(self.configFile, "wb", "utf-8") as fileObj:
 			json.dump(self.config, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
-
-	def createSpeedWalk(self, directionsList):
-		"""Given a list of directions, return a string of the directions in standard speed walk format"""
-		def compressDirections(directionsBuffer):
-			speedWalkDirs = []
-			for direction, group in itertools.groupby(directionsBuffer):
-				lenGroup = len(list(group))
-				if lenGroup == 1:
-					speedWalkDirs.append(direction[0])
-				else:
-					speedWalkDirs.append("{0}{1}".format(lenGroup, direction[0]))
-			return speedWalkDirs
-		result = []
-		directionsBuffer = []
-		while directionsList:
-			item = directionsList.pop()
-			if item in DIRECTIONS:
-				directionsBuffer.append(item)
-			else:
-				# The item is not a direction, so process the directions buffer, clear the buffer, and add the resulting list plus the item to the result.
-				result.extend(compressDirections(directionsBuffer))
-				directionsBuffer = []
-				result.append(item)
-		# Process any remaining items in the directions buffer.
-		if directionsBuffer:
-			result.extend(compressDirections(directionsBuffer))
-		return "; ".join(result)
 
 	def parseInput(self, userInput):
 		"""Parse the user input"""

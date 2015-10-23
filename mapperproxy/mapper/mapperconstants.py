@@ -21,7 +21,7 @@ MPI_REGEX = re.compile(br"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\
 
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
-USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
+USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|path|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
 MAPPER_IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
 
@@ -94,6 +94,8 @@ MOVEMENT_FORCED_REGEX = re.compile("|".join([
 			r"Oops\! You walk off the bridge and fall into the rushing water below\!",
 			r"Holding your breath and with closed eyes\, you are squeezed below the surface of the water\.",
 			r"You tighten your grip as (:a Great Eagle|Gwaihir the Windlord) starts to descend fast\.",
+			r"The trees confuse you\, making you wander around in circles\.",
+			r"Sarion helps you outside\.",
 			r"Stepping on the lizard corpses\, you use some depressions in the wall for support\, push the muddy ceiling apart and climb out of the cave\."
 		]
 	)
