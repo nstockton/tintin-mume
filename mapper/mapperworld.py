@@ -637,7 +637,7 @@ class World(object):
 		ignoreVnums = frozenset(("undefined", "death"))
 		isDestinationFunc = lambda currentRoomObj: currentRoomObj is destination
 		exitIgnoreFunc = lambda exitObj: exitObj.to in ignoreVnums
-		exitCostFunc = lambda exitObj, neighborRoomObj: 5 if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags else 0 + 1000 if "avoid" in exitObj.exitFlags else 0 + 10 if neighborRoomObj.terrain in avoidTerrains else 0
+		exitCostFunc = lambda exitObj, neighborRoomObj: (5 if "door" in exitObj.exitFlags or "climb" in exitObj.exitFlags else 0) + (1000 if "avoid" in exitObj.exitFlags else 0) + (10 if neighborRoomObj.terrain in avoidTerrains else 0)
 		exitDestinationFunc = None # lambda exitObj, neighborRoomObj
 		return self._pathFind(origin, isDestinationFunc, exitIgnoreFunc, exitCostFunc, exitDestinationFunc)
 
