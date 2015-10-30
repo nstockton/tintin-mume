@@ -17,23 +17,21 @@ SAMPLE_LABELS_FILE = "room_labels.json.sample"
 
 DIRECTIONS = ["north", "east", "south", "west", "up", "down"]
 
-MPI_REGEX = re.compile(br"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\d+)(?:\n))?(?P<description>.+?)\n(?P<body>.*)", re.DOTALL | re.MULTILINE)
+MPI_REGEX = re.compile(r"~\$#E(?P<command>[EV])(?P<length>\d+)\n((?P<session>M\d+)(?:\n))?(?P<description>.+?)\n(?P<body>.*)", re.DOTALL | re.MULTILINE)
 
 RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
 
-USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|path|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
-
-MAPPER_IGNORE_TAGS_REGEX = re.compile(br"<[/]?(?:xml|terrain|tell|say|narrate|pray|emote|magic|weather|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|enemy|familiar|snoop.*?|highlight.*?)>")
+USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|path|vnum|tvnum|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
 TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|west|up|down))?/>|<[/]?(?:xml|terrain|magic|weather|room|exits|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|familiar|snoop.*?|highlight.*?)>")
 
 TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>enemy|prompt|name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
 
-ROOM_TAGS_REGEX = re.compile(r"(?P<movement><movement(?: dir=(?P<movementDir>north|south|east|west|up|down))?/>)?(?:You blink and feel weaker under the cruel light of the sun\.[\r\n]*|You feel so much better hiding in the shadows\![\r\n]*)?<room><name>(?P<name>.+?)</name>[\r\n]*(?:<description>(?P<description>.*?)</description>)?(?P<dynamic>.*?)</room>(?:<exits>(?P<exits>.+?)</exits>)?.*?<prompt>(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?></prompt>", re.DOTALL|re.MULTILINE)
+PROMPT_REGEX = re.compile(r"^(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?>$")
 
 EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
 
-ANSI_COLOR_REGEX = re.compile(br"\x1b\[[\d;]+m")
+ANSI_COLOR_REGEX = re.compile(r"\x1b\[[\d;]+m")
 
 AVOID_DYNAMIC_DESC_REGEX = re.compile(r"Some roots lie here waiting to ensnare weary travellers\.|The remains of a clump of roots lie here in a heap of rotting compost\.|A clump of roots is here, fighting|Some withered twisted roots writhe towards you\.|Black roots shift uneasily all around you\.|black tangle of roots|Massive roots shift uneasily all around you\.|rattlesnake")
 
@@ -74,7 +72,6 @@ MOVEMENT_PREVENTED_REGEX = re.compile("^%s$" % "|".join([
 )
 
 MOVEMENT_FORCED_REGEX = re.compile("|".join([
-			r"You can\'t seem to escape the (?P<ignore>roots)\!",
 			r"You feel confused and move along randomly\.\.\.",
 			r"Suddenly an explosion of ancient rhymes makes the space collapse around you\!",
 			r"The pain stops\, your vision clears\, and you realize that you are elsewhere\.",

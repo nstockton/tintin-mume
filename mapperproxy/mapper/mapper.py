@@ -2,23 +2,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from builtins import bytes
 try:
 	from Queue import Queue
 except ImportError:
 	from queue import Queue
 import re
 import socket
-from telnetlib import IAC, DO, GA, TTYPE, NAWS
+from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA, TTYPE, NAWS
 import threading
 from timeit import default_timer
 
-from .mapperconstants import DIRECTIONS, REVERSE_DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, MAPPER_IGNORE_TAGS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, ROOM_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
+from .mapperconstants import DIRECTIONS, REVERSE_DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
 from .mapperworld import Room, Exit, World
 from .mpi import MPI
-from .utils import iterItems, decodeBytes, multiReplace, TelnetStripper, regexFuzzy
+from .utils import iterItems, decodeBytes, multiReplace, regexFuzzy
+from .xmlparser import MumeXMLParser
 
 
-IAC_GA = IAC + GA
+IAC_GA = bytes(IAC + GA)
 
 class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue, isTinTin):
@@ -37,6 +39,8 @@ class Mapper(threading.Thread, World):
 		self.autoWalkDirections = []
 		self.lastPathFindQuery = ""
 		self.lastPrompt = ">"
+		self.mpiThreads = []
+		self.xmlParser = MumeXMLParser()
 		World.__init__(self)
 
 	def output(self, text):
@@ -151,6 +155,15 @@ class Mapper(threading.Thread, World):
 	def user_command_rinfo(self, *args):
 		self.clientSend("\n".join(self.rinfo(*args)))
 
+	def user_command_vnum(self, *args):
+		self.clientSend(self.currentRoom.vnum)
+
+	def user_command_tvnum(self, *args):
+		if not args or not args[0] or not args[0].strip():
+			self.clientSend("Tell VNum to who?")
+		else:
+			self.serverSend("tell %s %s" % (args[0].strip(), self.currentRoom.vnum))
+
 	def user_command_rlabel(self, *args):
 		result = self.rlabel(*args)
 		if result:
@@ -160,17 +173,26 @@ class Mapper(threading.Thread, World):
 		self.saveRooms()
 
 	def user_command_run(self, *args):
-		if not args or not args[0]:
+		if not args or not args[0] or not args[0].strip():
 			return self.clientSend("Usage: run [label|vnum]")
 		self.autoWalkDirections = []
 		argString = args[0].strip()
-		if argString == "c":
+		if argString.lower() == "c":
 			if self.lastPathFindQuery:
 				match = RUN_DESTINATION_REGEX.match(self.lastPathFindQuery)
 				destination = match.group("destination")
 				self.clientSend("Continuing walking to destination {0}.".format(destination))
 			else:
 				return self.clientSend("Error: no previous path to continue.")
+		elif argString.lower() == "t" or argString.lower().startswith("t "):
+			argString = argString[2:].strip()
+			if not argString:
+				if self.lastPathFindQuery:
+					return self.clientSend("Run target set to '%s'. Use 'run t [rlabel|vnum]' to change it." % self.lastPathFindQuery)
+				else:
+					return self.clientSend("Please specify a VNum or room label to target.")
+			self.lastPathFindQuery = argString
+			return self.clientSend("Setting run target to '%s'" % self.lastPathFindQuery)
 		else:
 			match = RUN_DESTINATION_REGEX.match(argString)
 			destination = match.group("destination")
@@ -277,6 +299,76 @@ class Mapper(threading.Thread, World):
 		self.prevRoom = rooms[currentRoom.vnum]
 		self.currentRoom = rooms[vnum]
 
+	def parseMudOutput(self, data):
+		mpiMatch = MPI_REGEX.search("".join(data.lstrip().splitlines(True)))
+		if mpiMatch is not None:
+			# A local editing session was initiated.
+			self.mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=self.isTinTin, mpiMatch=mpiMatch.groupdict()))
+			self.mpiThreads[-1].start()
+			return
+		data = ANSI_COLOR_REGEX.sub("", data)
+		rooms = self.xmlParser.parse(data)
+		self.lastPrompt = self.xmlParser.lastPrompt
+		data = self.xmlParser.unescape(data)
+		movementForcedSearch = MOVEMENT_FORCED_REGEX.search(data)
+		if movementForcedSearch or MOVEMENT_PREVENTED_REGEX.search(data):
+			self.stopRun()
+		if self.isSynced:
+			if movementForcedSearch is not None:
+				# The player was forcibly moved in an unknown direction.
+				self.isSynced = False
+				self.clientSend("Forced movement, no longer synced.")
+			if self.autoMapping:
+				if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
+					self.clientSend(self.rridable("notridable"))
+				elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
+					self.clientSend(self.rridable("ridable"))
+		if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
+			self.sync(vnum="17189")
+		for roomDict in rooms:
+			# Room data was received
+			if roomDict["ignore"]:
+				continue
+			elif "movement" in roomDict and roomDict["movement"] in DIRECTIONS and self.isSynced:
+				# The player has moved in a valid direction, and has entered an existing room in the database. Adjust the map accordingly.
+				if self.autoMapping and (roomDict["movement"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movement"]].to not in self.rooms):
+					if self.autoMerging:
+						foundRooms = self.searchRooms(exactMatch=True, name=roomDict["name"], desc=roomDict["description"]) if roomDict["name"] and roomDict["description"] else []
+					if self.autoMerging and len(foundRooms) == 1:
+						output = []
+						vnum, roomObj = foundRooms[0]
+						if self.autoLinking and REVERSE_DIRECTIONS[roomDict["movement"]] in roomObj.exits and roomObj.exits[REVERSE_DIRECTIONS[roomDict["movement"]]].to == "undefined":
+							output.append(self.rlink("add %s %s" % (vnum, roomDict["movement"])))
+						else:
+							output.append(self.rlink("add oneway %s %s" % (vnum, roomDict["movement"])))
+						output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
+						self.clientSend("\n".join(output))
+					else:
+						vnum = self.getNewVnum()
+						newRoom = Room(vnum)
+						newRoom.name = roomDict["name"]
+						newRoom.desc = roomDict["description"]
+						newRoom.dynamicDesc = roomDict["dynamic"]
+						newRoom.x, newRoom.y, newRoom.z = self.coordinatesAddDirection((self.currentRoom.x, self.currentRoom.y, self.currentRoom.z), roomDict["movement"])
+						if REVERSE_DIRECTIONS[roomDict["movement"]] in roomDict["exits"]:
+							newRoom.exits[REVERSE_DIRECTIONS[roomDict["movement"]]] = Exit()
+							newRoom.exits[REVERSE_DIRECTIONS[roomDict["movement"]]].to = self.currentRoom.vnum
+						self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
+						self.rooms[vnum] = newRoom
+						self.currentRoom.exits[roomDict["movement"]].to = vnum
+				self.move(roomDict["movement"])
+				if self.autoWalkDirections:
+					# The player is auto-walking. Send the next direction to Mume.
+					self.walkNextDirection()
+			# If necessary, try to sync the map to the current room.
+			if not roomDict["name"] or roomDict["name"] in ("You just see a dense fog around you...", "It is pitch black...") or not self.isSynced and not self.sync(roomDict["name"]):
+				# The room is dark, foggy, or the mapper was unable to sync to the current room.
+				continue
+			# The map is now synced.
+			if self.autoMapping:
+				# If necessary, update the current room's information in the database with the information received from Mume.
+				self.updateCurrentRoom(roomDict)
+
 	def updateCurrentRoom(self, roomDict):
 		output = []
 		if self.autoUpdating:
@@ -335,13 +427,22 @@ class Mapper(threading.Thread, World):
 			return self.clientSend("\n".join(output))
 
 	def run(self):
-		mpiThreads = []
-		stripper = TelnetStripper()
+		ignoreBytes = frozenset(list(bytes(theNULL + b"\x11")))
+		negotiationBytes = frozenset(list(bytes(DONT + DO + WONT + WILL)))
+		ordIAC = ord(IAC)
+		ordSB = ord(SB)
+		ordSE = ord(SE)
+		ordGA = ord(GA)
+		inIAC = False
+		inSubOption = False
+		strippedReceived = bytearray()
+		mapperQueue = self.mapperQueue
+		parseMudOutput = self.parseMudOutput
 		while True:
-			isFromClient, data = self.mapperQueue.get()
+			isFromClient, data = mapperQueue.get()
 			if data is None:
 				break
-			if isFromClient:
+			elif isFromClient:
 				# The data was sent from the user's mud client.
 				matchedUserInput = USER_COMMANDS_REGEX.match(data)
 				if matchedUserInput:
@@ -349,90 +450,38 @@ class Mapper(threading.Thread, World):
 					getattr(self, "user_command_{0}".format(decodeBytes(matchedUserInput.group("command"))))(decodeBytes(matchedUserInput.group("arguments")))
 				continue
 			# The data was from the mud server.
-			data = stripper.process(data)
-			if data is None:
-				# Keep buffering until IAC_GA is received.
-				continue
-			mpiMatch = MPI_REGEX.search(b"".join(data.lstrip().splitlines(True)))
-			if mpiMatch is not None:
-				# A local editing session was initiated.
-				mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=self.isTinTin, mpiMatch=mpiMatch.groupdict()))
-				mpiThreads[-1].start()
-				continue
-			data = MAPPER_IGNORE_TAGS_REGEX.sub(b"", data)
-			data = ANSI_COLOR_REGEX.sub(b"", data)
-			data = decodeBytes(multiReplace(data, XML_UNESCAPE_PATTERNS))
-			if "<prompt>" in data and "</prompt>" in data:
-				self.lastPrompt = data.rsplit("<prompt>", 1)[-1].rsplit("</prompt>", 1)[0]
-			movementForcedSearch = MOVEMENT_FORCED_REGEX.search(data)
-			if movementForcedSearch or MOVEMENT_PREVENTED_REGEX.search(data):
-				self.stopRun()
-			if self.isSynced:
-				if movementForcedSearch is not None:
-					if movementForcedSearch.group("ignore"):
-						# Forced movement that is marked with 'ignore' indicates that the mapper should undo the last move and remain in sync.
-						# This is used in situations such as a clump of roots pulling the player back into the room that he/she just left.
-						self.currentRoom = self.rooms[self.prevRoom.vnum]
-						self.clientSend("Forced movement ignored, still synced.")
+			for byte in bytes(data):
+				if not inIAC:
+					if byte == ordIAC:
+						inIAC = True
+					elif not inSubOption and byte not in ignoreBytes:
+						strippedReceived.append(byte)
+				else:
+					if byte in negotiationBytes:
+						# This is the second byte in a 3-byte telnet option sequence.
+						# Skip the byte, and move on to the next.
 						continue
-					else:
-						# The player was forcibly moved in an unknown direction.
-						self.isSynced = False
-						self.clientSend("Forced movement, no longer synced.")
-				if self.autoMapping:
-					if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
-						self.clientSend(self.rridable("notridable"))
-					elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
-						self.clientSend(self.rridable("ridable"))
-			if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
-				self.sync(vnum="17189")
-			for match in ROOM_TAGS_REGEX.finditer(data):
-				roomDict = match.groupdict()
-				# Room data was received
-				if "You quietly scout " in data or "You stop scouting." in data:
-					continue
-				if roomDict["movement"] and self.isSynced:
-					# The player has moved in an existing direction, and has entered an existing room in the database. Adjust the map accordingly.
-					if self.autoMapping and roomDict["movementDir"] and (roomDict["movementDir"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movementDir"]].to not in self.rooms):
-						if self.autoMerging:
-							foundRooms = self.searchRooms(exactMatch=True, name=roomDict["name"], desc=roomDict["description"]) if roomDict["name"] and roomDict["description"] else []
-						if self.autoMerging and len(foundRooms) == 1:
-							output = []
-							vnum, roomObj = foundRooms[0]
-							if self.autoLinking and REVERSE_DIRECTIONS[roomDict["movementDir"]] in roomObj.exits and roomObj.exits[REVERSE_DIRECTIONS[roomDict["movementDir"]]].to == "undefined":
-								output.append(self.rlink("add %s %s" % (vnum, roomDict["movementDir"])))
-							else:
-								output.append(self.rlink("add oneway %s %s" % (vnum, roomDict["movementDir"])))
-							output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
-							self.clientSend("\n".join(output))
-						else:
-							vnum = self.getNewVnum()
-							newRoom = Room(vnum)
-							newRoom.name = roomDict["name"] if roomDict["name"] else ""
-							newRoom.desc = roomDict["description"] if roomDict["description"] else ""
-							newRoom.dynamicDesc = roomDict["dynamic"] if roomDict["dynamic"] else ""
-							newRoom.x, newRoom.y, newRoom.z = self.coordinatesAddDirection((self.currentRoom.x, self.currentRoom.y, self.currentRoom.z), roomDict["movementDir"])
-							if REVERSE_DIRECTIONS[roomDict["movementDir"]] in roomDict["exits"]:
-								newRoom.exits[REVERSE_DIRECTIONS[roomDict["movementDir"]]] = Exit()
-								newRoom.exits[REVERSE_DIRECTIONS[roomDict["movementDir"]]].to = self.currentRoom.vnum
-							self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
-							self.rooms[vnum] = newRoom
-							self.currentRoom.exits[roomDict["movementDir"]].to = vnum
-					self.move(roomDict["movementDir"])
-					if self.autoWalkDirections:
-						# The player is auto-walking. Send the next direction to Mume.
-						self.walkNextDirection()
-				# If necessary, try to sync the map to the current room.
-				if roomDict["name"] in ("You just see a dense fog around you...", "It is pitch black...") or not self.isSynced and not self.sync(roomDict["name"]):
-					# The room is dark, foggy, or the mapper was unable to sync to the current room.
-					continue
-				# The map is now synced.
-				if self.autoMapping:
-					# If necessary, update the current room's information in the database with the information received from Mume.
-					self.updateCurrentRoom(roomDict)
+					# From this point on, byte is the final byte in a 2-3 byte telnet option sequence.
+					inIAC = False
+					if byte == ordSB:
+						# Sub-option negotiation begin
+						inSubOption = True
+					elif byte == ordSE:
+						# Sub-option negotiation end
+						inSubOption = False
+					elif inSubOption:
+						# Ignore subsequent bytes until the sub option negotiation has ended.
+						continue
+					elif byte == ordIAC:
+						# This is an escaped IAC byte to be added to the buffer.
+						strippedReceived.append(byte)
+					elif byte == ordGA:
+						# Mume will send an IAC-GA sequence after every prompt.
+						parseMudOutput(decodeBytes(strippedReceived))
+						del strippedReceived[:]
 		# end while, mapper thread ending.
 		# Join the MPI threads (if any) before joining the Mapper thread.
-		for mpiThread in mpiThreads:
+		for mpiThread in self.mpiThreads:
 			mpiThread.join()
 		self.clientSend("Exiting mapper thread.")
 
