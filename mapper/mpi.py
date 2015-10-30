@@ -34,15 +34,15 @@ class MPI(threading.Thread):
 	def run(self):
 		if not self.mpiMatch:
 			return
-		command = decodeBytes(self.mpiMatch["command"])
-		length = int(decodeBytes(self.mpiMatch["length"]))
-		session = decodeBytes(self.mpiMatch["session"]) if self.mpiMatch["session"] else ""
+		command = self.mpiMatch["command"]
+		length = int(self.mpiMatch["length"])
+		session = self.mpiMatch["session"] if self.mpiMatch["session"] else ""
 		if session:
 			length -= len(session) + 1
-		description = decodeBytes(self.mpiMatch["description"]) if self.mpiMatch["description"] else ""
+		description = self.mpiMatch["description"] if self.mpiMatch["description"] else ""
 		if description:
 			length -= len(description) + 1
-		body = decodeBytes(self.mpiMatch["body"])[:length].replace("\r", "").replace("\n", "\r\n")
+		body = self.mpiMatch["body"][:length].replace("\r", "").replace("\n", "\r\n")
 		if command == "V":
 			fileName = os.path.join(TMP_DIR, "V%d.txt" % random.randint(1000, 9999))
 			with open(fileName, "wb") as fileObj:
@@ -66,5 +66,5 @@ class MPI(threading.Thread):
 				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
 				editorProcess.wait()
 			with open(fileName, "rb") as fileObj:
-				response = b"\n".join((self.mpiMatch["session"].replace(b"M", b"E"), fileObj.read().replace(b"\r", b"").replace(IAC, IAC + IAC)))
+				response = b"\n".join([self.mpiMatch["session"].replace("M", "E").encode("utf-8"), fileObj.read().replace(b"\r", b"").replace(IAC, IAC + IAC)])
 			self._server.sendall(b"".join((b"~$#EE", str(len(response)).encode("utf-8"), b"\n", response)))
