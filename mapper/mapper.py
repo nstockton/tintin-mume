@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from builtins import bytes
 try:
 	from Queue import Queue
 except ImportError:
@@ -20,7 +19,7 @@ from .utils import iterItems, decodeBytes, multiReplace, regexFuzzy
 from .xmlparser import MumeXMLParser
 
 
-IAC_GA = bytes(IAC + GA)
+IAC_GA = IAC + GA
 
 class Mapper(threading.Thread, World):
 	def __init__(self, client, server, mapperQueue, isTinTin):
@@ -282,22 +281,47 @@ class Mapper(threading.Thread, World):
 
 	def move(self, dir):
 		rooms = self.rooms
-		currentRoom = self.currentRoom
 		if not dir:
+			# The player was forcibly moved in an unknown direction.
 			self.isSynced = False
-			return self.clientSend("Map no longer synced!")
+			return self.clientSend("Forced movement, no longer synced.")
 		elif dir not in DIRECTIONS:
 			self.isSynced = False
 			return self.clientSend("Error: Invalid direction '{0}'. Map no longer synced!".format(dir))
-		elif dir not in currentRoom.exits:
+		elif dir not in self.currentRoom.exits:
 			self.isSynced = False
 			return self.clientSend("Error: direction '{0}' not in database. Map no longer synced!".format(dir))
-		vnum = currentRoom.exits[dir].to
+		vnum = self.currentRoom.exits[dir].to
 		if vnum not in rooms:
 			self.isSynced = False
 			return self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(vnum, dir))
-		self.prevRoom = rooms[currentRoom.vnum]
 		self.currentRoom = rooms[vnum]
+
+	def autoMerge(self, roomDict):
+		foundRooms = self.searchRooms(exactMatch=True, name=roomDict["name"], desc=roomDict["description"]) if roomDict["name"] and roomDict["description"] else []
+		if len(foundRooms) == 1:
+			output = []
+			vnum, roomObj = foundRooms[0]
+			if self.autoLinking and REVERSE_DIRECTIONS[roomDict["movement"]] in roomObj.exits and roomObj.exits[REVERSE_DIRECTIONS[roomDict["movement"]]].to == "undefined":
+				output.append(self.rlink("add %s %s" % (vnum, roomDict["movement"])))
+			else:
+				output.append(self.rlink("add oneway %s %s" % (vnum, roomDict["movement"])))
+			output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
+			self.clientSend("\n".join(output))
+
+	def addRoom(self, roomDict):
+		vnum = self.getNewVnum()
+		newRoom = Room(vnum)
+		newRoom.name = roomDict["name"]
+		newRoom.desc = roomDict["description"]
+		newRoom.dynamicDesc = roomDict["dynamic"]
+		newRoom.x, newRoom.y, newRoom.z = self.coordinatesAddDirection((self.currentRoom.x, self.currentRoom.y, self.currentRoom.z), roomDict["movement"])
+		if REVERSE_DIRECTIONS[roomDict["movement"]] in roomDict["exits"]:
+			newRoom.exits[REVERSE_DIRECTIONS[roomDict["movement"]]] = Exit()
+			newRoom.exits[REVERSE_DIRECTIONS[roomDict["movement"]]].to = self.currentRoom.vnum
+		self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
+		self.rooms[vnum] = newRoom
+		self.currentRoom.exits[roomDict["movement"]].to = vnum
 
 	def parseMudOutput(self, data):
 		mpiMatch = MPI_REGEX.search("".join(data.lstrip().splitlines(True)))
@@ -310,52 +334,26 @@ class Mapper(threading.Thread, World):
 		rooms = self.xmlParser.parse(data)
 		self.lastPrompt = self.xmlParser.lastPrompt
 		data = self.xmlParser.unescape(data)
-		movementForcedSearch = MOVEMENT_FORCED_REGEX.search(data)
-		if movementForcedSearch or MOVEMENT_PREVENTED_REGEX.search(data):
+		if MOVEMENT_FORCED_REGEX.search(data) or MOVEMENT_PREVENTED_REGEX.search(data):
 			self.stopRun()
-		if self.isSynced:
-			if movementForcedSearch is not None:
-				# The player was forcibly moved in an unknown direction.
-				self.isSynced = False
-				self.clientSend("Forced movement, no longer synced.")
-			if self.autoMapping:
-				if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
-					self.clientSend(self.rridable("notridable"))
-				elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
-					self.clientSend(self.rridable("ridable"))
+		if self.isSynced and self.autoMapping:
+			if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
+				self.clientSend(self.rridable("notridable"))
+			elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
+				self.clientSend(self.rridable("ridable"))
 		if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
 			self.sync(vnum="17189")
 		for roomDict in rooms:
 			# Room data was received
 			if roomDict["ignore"]:
 				continue
-			elif "movement" in roomDict and roomDict["movement"] in DIRECTIONS and self.isSynced:
+			elif "movement" in roomDict and self.isSynced:
 				# The player has moved in a valid direction, and has entered an existing room in the database. Adjust the map accordingly.
-				if self.autoMapping and (roomDict["movement"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movement"]].to not in self.rooms):
+				if self.autoMapping and roomDict["movement"] in DIRECTIONS and (roomDict["movement"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movement"]].to not in self.rooms):
 					if self.autoMerging:
-						foundRooms = self.searchRooms(exactMatch=True, name=roomDict["name"], desc=roomDict["description"]) if roomDict["name"] and roomDict["description"] else []
-					if self.autoMerging and len(foundRooms) == 1:
-						output = []
-						vnum, roomObj = foundRooms[0]
-						if self.autoLinking and REVERSE_DIRECTIONS[roomDict["movement"]] in roomObj.exits and roomObj.exits[REVERSE_DIRECTIONS[roomDict["movement"]]].to == "undefined":
-							output.append(self.rlink("add %s %s" % (vnum, roomDict["movement"])))
-						else:
-							output.append(self.rlink("add oneway %s %s" % (vnum, roomDict["movement"])))
-						output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
-						self.clientSend("\n".join(output))
+						self.autoMerge(roomDict)
 					else:
-						vnum = self.getNewVnum()
-						newRoom = Room(vnum)
-						newRoom.name = roomDict["name"]
-						newRoom.desc = roomDict["description"]
-						newRoom.dynamicDesc = roomDict["dynamic"]
-						newRoom.x, newRoom.y, newRoom.z = self.coordinatesAddDirection((self.currentRoom.x, self.currentRoom.y, self.currentRoom.z), roomDict["movement"])
-						if REVERSE_DIRECTIONS[roomDict["movement"]] in roomDict["exits"]:
-							newRoom.exits[REVERSE_DIRECTIONS[roomDict["movement"]]] = Exit()
-							newRoom.exits[REVERSE_DIRECTIONS[roomDict["movement"]]].to = self.currentRoom.vnum
-						self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
-						self.rooms[vnum] = newRoom
-						self.currentRoom.exits[roomDict["movement"]].to = vnum
+						self.addRoom(roomDict)
 				self.move(roomDict["movement"])
 				if self.autoWalkDirections:
 					# The player is auto-walking. Send the next direction to Mume.
@@ -365,6 +363,11 @@ class Mapper(threading.Thread, World):
 				# The room is dark, foggy, or the mapper was unable to sync to the current room.
 				continue
 			# The map is now synced.
+			doors = ", ".join("%s: %s" % (direction, exitObj.door) for direction, exitObj in iterItems(self.currentRoom.exits) if exitObj.door and exitObj.door != "exit")
+			if doors:
+				self.clientSend("Doors: %s" % doors)
+			if self.currentRoom.note:
+				self.clientSend("Note: %s" % self.currentRoom.note)
 			if self.autoMapping:
 				# If necessary, update the current room's information in the database with the information received from Mume.
 				self.updateCurrentRoom(roomDict)
@@ -427,8 +430,8 @@ class Mapper(threading.Thread, World):
 			return self.clientSend("\n".join(output))
 
 	def run(self):
-		ignoreBytes = frozenset(list(bytes(theNULL + b"\x11")))
-		negotiationBytes = frozenset(list(bytes(DONT + DO + WONT + WILL)))
+		ignoreBytes = frozenset([ord(theNULL), 0x11])
+		negotiationBytes = frozenset(ord(byte) for byte in [DONT, DO, WONT, WILL])
 		ordIAC = ord(IAC)
 		ordSB = ord(SB)
 		ordSE = ord(SE)
@@ -450,7 +453,7 @@ class Mapper(threading.Thread, World):
 					getattr(self, "user_command_{0}".format(decodeBytes(matchedUserInput.group("command"))))(decodeBytes(matchedUserInput.group("arguments")))
 				continue
 			# The data was from the mud server.
-			for byte in bytes(data):
+			for byte in bytearray(data):
 				if not inIAC:
 					if byte == ordIAC:
 						inIAC = True
