@@ -308,6 +308,8 @@ class Mapper(threading.Thread, World):
 				output.append(self.rlink("add oneway %s %s" % (vnum, roomDict["movement"])))
 			output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
 			self.clientSend("\n".join(output))
+		else:
+			self.addRoom(roomDict)
 
 	def addRoom(self, roomDict):
 		vnum = self.getNewVnum()
