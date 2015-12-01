@@ -21,7 +21,7 @@
 }
 
 #action {^A blue transparent wall slowly appears around you.$} {spellTimerSet armour}
-#action {^Your magic armour is revitalized.$} {spellTimerSet armour}
+#action {^Your magic armour is revitalised.$} {spellTimerSet armour}
 #action {^You feel less protected.$} {spellTimerUnset armour}
 #action {^- armour$} {
 	spellTimerStatus armour;
