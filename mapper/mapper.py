@@ -47,7 +47,10 @@ class Mapper(threading.Thread, World):
 		return self.clientSend(text)
 
 	def clientSend(self, msg):
-		self._client.sendall(("%s\r\nPROMPT:%s:PROMPT" % (msg, self.lastPrompt)).encode("utf-8").replace(IAC, IAC+IAC) + IAC_GA)
+		if self.isTinTin:
+			self._client.sendall(("%s\r\nPROMPT:%s:PROMPT" % (msg, self.lastPrompt)).encode("utf-8").replace(IAC, IAC+IAC) + IAC_GA)
+		else:
+			self._client.sendall(("%s\r\n" % msg).encode("utf-8").replace(IAC, IAC+IAC) + IAC_GA)
 		return None
 
 	def serverSend(self, msg):
@@ -524,12 +527,13 @@ class Proxy(threading.Thread):
 
 
 class Server(threading.Thread):
-	def __init__(self, client, server, mapperQueue):
+	def __init__(self, client, server, mapperQueue, isTinTin):
 		threading.Thread.__init__(self)
 		self.daemon = True
 		self._client = client
 		self._server = server
 		self._mapperQueue = mapperQueue
+		self._isTinTin = bool(isTinTin)
 
 	def upperMatch(self, match):
 		tag = match.group("tag").upper()
@@ -547,6 +551,7 @@ class Server(threading.Thread):
 		return b"".join((tag, b":", text, b":", tag, lineEnd))
 
 	def run(self):
+		isTinTin = self._isTinTin
 		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
 		encounteredInitialOutput = False
 		while True:
@@ -563,9 +568,10 @@ class Server(threading.Thread):
 				encounteredInitialOutput = True
 			# False tells the mapper thread that the data is from the Mume server, and *not* from the user's Mud client.
 			self._mapperQueue.put((False, data))
-			data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
-			data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
-			data = multiReplace(data, XML_UNESCAPE_PATTERNS)
+			if isTinTin:
+				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
+				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
+				data = multiReplace(data, XML_UNESCAPE_PATTERNS)
 			self._client.sendall(data)
 
 
@@ -592,7 +598,7 @@ def main(isTinTin=None):
 	mapperQueue = Queue()
 	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, isTinTin=isTinTin)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
-	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
+	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, isTinTin=isTinTin)
 	serverThread.start()
 	proxyThread.start()
 	mapperThread.start()
