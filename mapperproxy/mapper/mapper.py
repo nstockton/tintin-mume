@@ -12,7 +12,7 @@ from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA, TTYPE, NAW
 import threading
 from timeit import default_timer
 
-from .mapperconstants import DIRECTIONS, REVERSE_DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
+from .mapperconstants import DIRECTIONS, REVERSE_DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, NORMAL_IGNORE_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
 from .mapperworld import Room, Exit, World
 from .mpi import MPI
 from .utils import iterItems, decodeBytes, multiReplace, regexFuzzy
@@ -22,7 +22,7 @@ from .xmlparser import MumeXMLParser
 IAC_GA = IAC + GA
 
 class Mapper(threading.Thread, World):
-	def __init__(self, client, server, mapperQueue, isTinTin):
+	def __init__(self, client, server, mapperQueue, outputFormat):
 		threading.Thread.__init__(self)
 		self.daemon = True
 		# Initialize the timer.
@@ -30,7 +30,7 @@ class Mapper(threading.Thread, World):
 		self._client = client
 		self._server = server
 		self.mapperQueue = mapperQueue
-		self.isTinTin = bool(isTinTin)
+		self.outputFormat = outputFormat
 		self.autoMapping = False
 		self.autoUpdating = False
 		self.autoMerging = True
@@ -47,7 +47,7 @@ class Mapper(threading.Thread, World):
 		return self.clientSend(text)
 
 	def clientSend(self, msg):
-		if self.isTinTin:
+		if self.outputFormat == "tintin":
 			self._client.sendall(("%s\r\nPROMPT:%s:PROMPT" % (msg, self.lastPrompt)).encode("utf-8").replace(IAC, IAC+IAC) + IAC_GA)
 		else:
 			self._client.sendall(("%s\r\n" % msg).encode("utf-8").replace(IAC, IAC+IAC) + IAC_GA)
@@ -332,7 +332,7 @@ class Mapper(threading.Thread, World):
 		mpiMatch = MPI_REGEX.search("".join(data.lstrip().splitlines(True)))
 		if mpiMatch is not None:
 			# A local editing session was initiated.
-			self.mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=self.isTinTin, mpiMatch=mpiMatch.groupdict()))
+			self.mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=self.outputFormat == "tintin", mpiMatch=mpiMatch.groupdict()))
 			self.mpiThreads[-1].start()
 			return
 		data = ANSI_COLOR_REGEX.sub("", data)
@@ -527,13 +527,13 @@ class Proxy(threading.Thread):
 
 
 class Server(threading.Thread):
-	def __init__(self, client, server, mapperQueue, isTinTin):
+	def __init__(self, client, server, mapperQueue, outputFormat):
 		threading.Thread.__init__(self)
 		self.daemon = True
 		self._client = client
 		self._server = server
 		self._mapperQueue = mapperQueue
-		self._isTinTin = bool(isTinTin)
+		self._outputFormat = outputFormat
 
 	def upperMatch(self, match):
 		tag = match.group("tag").upper()
@@ -551,7 +551,9 @@ class Server(threading.Thread):
 		return b"".join((tag, b":", text, b":", tag, lineEnd))
 
 	def run(self):
-		isTinTin = self._isTinTin
+		normalFormat = self._outputFormat == "normal"
+		tinTinFormat = self._outputFormat == "tintin"
+		rawFormat = self._outputFormat == "raw"
 		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
 		encounteredInitialOutput = False
 		while True:
@@ -568,14 +570,18 @@ class Server(threading.Thread):
 				encounteredInitialOutput = True
 			# False tells the mapper thread that the data is from the Mume server, and *not* from the user's Mud client.
 			self._mapperQueue.put((False, data))
-			if isTinTin:
+			if tinTinFormat:
 				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
 				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
+				data = multiReplace(data, XML_UNESCAPE_PATTERNS).replace(b"\r\n", b"\n").replace(b"\n\n", b"\n")
+			elif normalFormat:
+				data = NORMAL_IGNORE_TAGS_REGEX.sub(b"", data)
 				data = multiReplace(data, XML_UNESCAPE_PATTERNS)
 			self._client.sendall(data)
 
 
-def main(isTinTin=None):
+def main(outputFormat="normal"):
+	outputFormat = outputFormat.strip().lower()
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	proxySocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	proxySocket.bind(("", 4000))
@@ -596,9 +602,9 @@ def main(isTinTin=None):
 		clientConnection.close()
 		return
 	mapperQueue = Queue()
-	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, isTinTin=isTinTin)
+	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, outputFormat=outputFormat)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
-	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, isTinTin=isTinTin)
+	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, outputFormat=outputFormat)
 	serverThread.start()
 	proxyThread.start()
 	mapperThread.start()

@@ -27,6 +27,8 @@ TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|we
 
 TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>enemy|prompt|name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
 
+NORMAL_IGNORE_TAGS_REGEX = re.compile(br"<[^>]*>")
+
 PROMPT_REGEX = re.compile(r"^(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?>$")
 
 EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
@@ -238,7 +240,5 @@ XML_UNESCAPE_PATTERNS = (
 	(b"&quot;", b"\""),
 	(b"&#39;", b"'"),
 	(b"&apos;", b"'"),
-	(b"&amp;", b"&"),
-	(b"\r\n", b"\n"),
-	(b"\n\n", b"\n")
+	(b"&amp;", b"&")
 )
