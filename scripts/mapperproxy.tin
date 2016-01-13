@@ -6,4 +6,4 @@ from mapperproxy.mapper import mapper
 
 #gts
 
-#mapper mapper.main(isTinTin=True)
+#mapper mapper.main("tintin")
