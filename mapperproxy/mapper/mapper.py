@@ -64,16 +64,14 @@ class Mapper(threading.Thread, World):
 		self.clientSend("TIMERMS:%d:TIMERMS" % int((default_timer() - self.initTimer) * 1000))
 
 	def user_command_secretaction(self, *args):
-		regex = re.compile(r"^\s*(?P<action>.+)\s+(?P<direction>%s)$" % regexFuzzy(DIRECTIONS))
+		regex = re.compile(r"^\s*(?P<action>.+?)(?:\s+(?P<direction>%s))?$" % regexFuzzy(DIRECTIONS))
 		try:
 			matchDict = regex.match(args[0].strip().lower()).groupdict()
 		except (NameError, IndexError, AttributeError):
 			return self.clientSend("Syntax: 'secretaction [action] [%s]'." % " | ".join(DIRECTIONS))
-		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
-		if direction in self.currentRoom.exits and self.currentRoom.exits[direction].door:
-			return self.serverSend("%s %s %s" % (matchDict["action"], self.currentRoom.exits[direction].door, direction[0]))
-		else:
-			return self.serverSend("%s exit %s" % (matchDict["action"], direction[0]))
+		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"])) if matchDict["direction"] else ""
+		door = self.currentRoom.exits[direction].door if direction and direction in self.currentRoom.exits and self.currentRoom.exits[direction].door else "exit"
+		return self.serverSend(" ".join(item for item in (matchDict["action"], door, direction[0:1]) if item))
 
 	def user_command_automap(self, *args):
 		if not args or not args[0] or not args[0].strip():
@@ -368,9 +366,22 @@ class Mapper(threading.Thread, World):
 				# The room is dark, foggy, or the mapper was unable to sync to the current room.
 				continue
 			# The map is now synced.
-			doors = ", ".join("%s: %s" % (direction, exitObj.door) for direction, exitObj in iterItems(self.currentRoom.exits) if exitObj.door and exitObj.door != "exit")
+			doors = []
+			deathTraps = []
+			undefineds = []
+			for direction, exitObj in iterItems(self.currentRoom.exits):
+				if exitObj.door and exitObj.door != "exit":
+					doors.append("%s: %s" % (direction, exitObj.door))
+				if exitObj.to and exitObj.to == "death":
+					deathTraps.append(direction)
+				if not exitObj.to or exitObj.to == "undefined":
+					undefineds.append(direction)
 			if doors:
-				self.clientSend("Doors: %s" % doors)
+				self.clientSend("Doors: %s" % ", ".join(doors))
+			if deathTraps:
+				self.clientSend("Death Traps: %s" % ", ".join(deathTraps))
+			if undefineds:
+				self.clientSend("Undefined exits: %s" % ", ".join(undefineds))
 			if self.currentRoom.note:
 				self.clientSend("Note: %s" % self.currentRoom.note)
 			if self.autoMapping:
