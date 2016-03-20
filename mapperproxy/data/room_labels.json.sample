@@ -1,5 +1,4 @@
 {
-  "Leaflock": "20975",
   "abr-illusionist": "17802",
   "abr-tower": "16090",
   "aldereon": "1604",
@@ -151,6 +150,7 @@
   "lb-eagle": "5521",
   "lbf": "5567",
   "leaf-cake": "20928",
+  "leaflock": "20975",
   "liche": "13752",
   "lonely-giant1": "2180",
   "lonely-giant2": "2477",
@@ -232,6 +232,7 @@
   "ooc-cleric-guild": "15298",
   "ooc-mounts": "98278",
   "ooc-ranger-guild": "15280",
+  "ooc-rent": "15311",
   "overseer": "13137",
   "overseer-key": "13163",
   "ow": "4574",
