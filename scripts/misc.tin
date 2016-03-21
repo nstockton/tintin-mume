@@ -11,3 +11,11 @@
 #alias {ws} {#send {wake\nstand}}
 #alias {cpack} {#send {remove cloak\nremove fur\nget cloak pack\nwear cloak\nput cloak pack\nput fur pack}}
 #alias {bpouch} {#send {remove boots\nget boots pouch\nwear boots\nput boots pouch}}
+
+#python
+
+from pyLib import hatch
+
+#gts
+
+#alias {hatchdirs} {#python hatch.send_dirs("%0")}
