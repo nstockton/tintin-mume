@@ -105,7 +105,9 @@ class MumeXMLParser(object):
 		if not data:
 			return
 		elif self._xmlMode == XML_NONE:
-			if "You quietly scout " in data or "You can't seem to escape the roots!" in data:
+			if "You were not able to keep your concentration while moving." in data and "You stop scouting." in data:
+				self._ignore = None
+			elif "You quietly scout " in data or "You can't seem to escape the roots!" in data:
 				self._ignore = True
 			return
 		elif not self.rooms:
