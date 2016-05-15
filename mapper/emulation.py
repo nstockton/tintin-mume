@@ -9,8 +9,8 @@ import re
 import subprocess
 import textwrap
 
-from .mapperworld import World
-from .mapperconstants import DIRECTIONS, RUN_DESTINATION_REGEX, TERRAIN_SYMBOLS
+from .world import World
+from .constants import DIRECTIONS, RUN_DESTINATION_REGEX, TERRAIN_SYMBOLS
 from .terminalsize import get_terminal_size
 from .utils import iterItems, getDirectoryPath
 

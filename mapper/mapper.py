@@ -7,29 +7,29 @@ try:
 except ImportError:
 	from queue import Queue
 import re
-import socket
-from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA, TTYPE, NAWS
+from telnetlib import IAC, GA
 import threading
 from timeit import default_timer
 
-from .mapperconstants import DIRECTIONS, REVERSE_DIRECTIONS, MPI_REGEX, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, NORMAL_IGNORE_TAGS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, XML_UNESCAPE_PATTERNS
-from .mapperworld import Room, Exit, World
-from .mpi import MPI
-from .utils import iterItems, decodeBytes, multiReplace, regexFuzzy
+from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS
+from .world import Room, Exit, World
+from .utils import iterItems, decodeBytes, regexFuzzy
 from .xmlparser import MumeXMLParser
 
 
 IAC_GA = IAC + GA
+USER_DATA = 0
+MUD_DATA = 1
 
 class Mapper(threading.Thread, World):
-	def __init__(self, client, server, mapperQueue, outputFormat):
+	def __init__(self, client, server, outputFormat):
 		threading.Thread.__init__(self)
 		self.daemon = True
 		# Initialize the timer.
 		self.initTimer = default_timer()
 		self._client = client
 		self._server = server
-		self.mapperQueue = mapperQueue
+		self.queue = Queue()
 		self.outputFormat = outputFormat
 		self.autoMapping = False
 		self.autoUpdating = False
@@ -38,7 +38,6 @@ class Mapper(threading.Thread, World):
 		self.autoWalkDirections = []
 		self.lastPathFindQuery = ""
 		self.lastPrompt = ">"
-		self.mpiThreads = []
 		self.xmlParser = MumeXMLParser()
 		World.__init__(self)
 
@@ -181,7 +180,7 @@ class Mapper(threading.Thread, World):
 			if self.lastPathFindQuery:
 				match = RUN_DESTINATION_REGEX.match(self.lastPathFindQuery)
 				destination = match.group("destination")
-				self.clientSend("Continuing walking to destination {0}.".format(destination))
+				self.clientSend(destination)
 			else:
 				return self.clientSend("Error: no previous path to continue.")
 		elif argString.lower() == "t" or argString.lower().startswith("t "):
@@ -258,7 +257,6 @@ class Mapper(threading.Thread, World):
 			if vnum in self.labels:
 				vnum = self.labels[vnum]
 			if vnum in self.rooms:
-				self.prevRoom = self.rooms[vnum]
 				self.currentRoom = self.rooms[vnum]
 				self.isSynced = True
 				self.clientSend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
@@ -272,7 +270,6 @@ class Mapper(threading.Thread, World):
 			if not vnums:
 				self.clientSend("Current room not in the database. Unable to sync.")
 			elif len(vnums) == 1:
-				self.prevRoom = self.rooms[vnums[0]]
 				self.currentRoom = self.rooms[vnums[0]]
 				self.isSynced = True
 				self.clientSend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
@@ -325,73 +322,6 @@ class Mapper(threading.Thread, World):
 		self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
 		self.rooms[vnum] = newRoom
 		self.currentRoom.exits[roomDict["movement"]].to = vnum
-
-	def parseMudOutput(self, data):
-		mpiMatch = MPI_REGEX.search("".join(data.lstrip().splitlines(True)))
-		if mpiMatch is not None:
-			# A local editing session was initiated.
-			self.mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=self.outputFormat == "tintin", mpiMatch=mpiMatch.groupdict()))
-			self.mpiThreads[-1].start()
-			return
-		data = ANSI_COLOR_REGEX.sub("", data)
-		rooms = self.xmlParser.parse(data)
-		self.lastPrompt = self.xmlParser.lastPrompt
-		data = self.xmlParser.unescape(data)
-		if MOVEMENT_FORCED_REGEX.search(data) or MOVEMENT_PREVENTED_REGEX.search(data):
-			self.stopRun()
-		if self.isSynced and self.autoMapping:
-			if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
-				self.clientSend(self.rridable("notridable"))
-			elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
-				self.clientSend(self.rridable("ridable"))
-		if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
-			self.sync(vnum="17189")
-		for roomDict in rooms:
-			# Room data was received
-			if roomDict["ignore"]:
-				continue
-			elif "movement" in roomDict and self.isSynced:
-				# The player has moved in a valid direction, and has entered an existing room in the database. Adjust the map accordingly.
-				if self.autoMapping and roomDict["movement"] in DIRECTIONS and (roomDict["movement"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movement"]].to not in self.rooms):
-					if self.autoMerging:
-						self.autoMerge(roomDict)
-					else:
-						self.addRoom(roomDict)
-				self.move(roomDict["movement"])
-				if self.autoWalkDirections:
-					# The player is auto-walking. Send the next direction to Mume.
-					self.walkNextDirection()
-			# If necessary, try to sync the map to the current room.
-			if not roomDict["name"] or roomDict["name"] in ("You just see a dense fog around you...", "It is pitch black...") or not self.isSynced and not self.sync(roomDict["name"]):
-				# The room is dark, foggy, or the mapper was unable to sync to the current room.
-				continue
-			# The map is now synced.
-			doors = []
-			deathTraps = []
-			oneWays = []
-			undefineds = []
-			for direction, exitObj in iterItems(self.currentRoom.exits):
-				if exitObj.door and exitObj.door != "exit":
-					doors.append("%s: %s" % (direction, exitObj.door))
-				if not exitObj.to or exitObj.to == "undefined":
-					undefineds.append(direction)
-				elif exitObj.to == "death":
-					deathTraps.append(direction)
-				elif REVERSE_DIRECTIONS[direction] not in self.rooms[exitObj.to].exits or self.rooms[exitObj.to].exits[REVERSE_DIRECTIONS[direction]].to != self.currentRoom.vnum:
-					oneWays.append(direction)
-			if doors:
-				self.clientSend("Doors: %s" % ", ".join(doors))
-			if deathTraps:
-				self.clientSend("Death Traps: %s" % ", ".join(deathTraps))
-			if oneWays:
-				self.clientSend("One ways: %s" % ", ".join(oneWays))
-			if undefineds:
-				self.clientSend("Undefineds: %s" % ", ".join(undefineds))
-			if self.currentRoom.note:
-				self.clientSend("Note: %s" % self.currentRoom.note)
-			if self.autoMapping:
-				# If necessary, update the current room's information in the database with the information received from Mume.
-				self.updateCurrentRoom(roomDict)
 
 	def updateCurrentRoom(self, roomDict):
 		output = []
@@ -451,22 +381,12 @@ class Mapper(threading.Thread, World):
 			return self.clientSend("\n".join(output))
 
 	def run(self):
-		ignoreBytes = frozenset([ord(theNULL), 0x11])
-		negotiationBytes = frozenset(ord(byte) for byte in [DONT, DO, WONT, WILL])
-		ordIAC = ord(IAC)
-		ordSB = ord(SB)
-		ordSE = ord(SE)
-		ordGA = ord(GA)
-		inIAC = False
-		inSubOption = False
-		strippedReceived = bytearray()
-		mapperQueue = self.mapperQueue
-		parseMudOutput = self.parseMudOutput
+		queue = self.queue
 		while True:
-			isFromClient, data = mapperQueue.get()
+			dataType, data = queue.get()
 			if data is None:
 				break
-			elif isFromClient:
+			elif dataType == USER_DATA:
 				# The data was sent from the user's mud client.
 				matchedUserInput = USER_COMMANDS_REGEX.match(data)
 				if matchedUserInput:
@@ -474,169 +394,65 @@ class Mapper(threading.Thread, World):
 					getattr(self, "user_command_{0}".format(decodeBytes(matchedUserInput.group("command"))))(decodeBytes(matchedUserInput.group("arguments")))
 				continue
 			# The data was from the mud server.
-			for byte in bytearray(data):
-				if not inIAC:
-					if byte == ordIAC:
-						inIAC = True
-					elif not inSubOption and byte not in ignoreBytes:
-						strippedReceived.append(byte)
-				else:
-					if byte in negotiationBytes:
-						# This is the second byte in a 3-byte telnet option sequence.
-						# Skip the byte, and move on to the next.
-						continue
-					# From this point on, byte is the final byte in a 2-3 byte telnet option sequence.
-					inIAC = False
-					if byte == ordSB:
-						# Sub-option negotiation begin
-						inSubOption = True
-					elif byte == ordSE:
-						# Sub-option negotiation end
-						inSubOption = False
-					elif inSubOption:
-						# Ignore subsequent bytes until the sub option negotiation has ended.
-						continue
-					elif byte == ordIAC:
-						# This is an escaped IAC byte to be added to the buffer.
-						strippedReceived.append(byte)
-					elif byte == ordGA:
-						# Mume will send an IAC-GA sequence after every prompt.
-						parseMudOutput(decodeBytes(strippedReceived))
-						del strippedReceived[:]
+			data = decodeBytes(data)
+			data = ANSI_COLOR_REGEX.sub("", data)
+			rooms = self.xmlParser.parse(data)
+			self.lastPrompt = self.xmlParser.lastPrompt
+			data = self.xmlParser.unescape(data)
+			if MOVEMENT_FORCED_REGEX.search(data) or MOVEMENT_PREVENTED_REGEX.search(data):
+				self.stopRun()
+			if self.isSynced and self.autoMapping:
+				if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
+					self.clientSend(self.rridable("notridable"))
+				elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
+					self.clientSend(self.rridable("ridable"))
+			if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
+				self.sync(vnum="17189")
+			for roomDict in rooms:
+				# Room data was received
+				if roomDict["ignore"]:
+					continue
+				elif "movement" in roomDict and self.isSynced:
+					# The player has moved in a valid direction, and has entered an existing room in the database. Adjust the map accordingly.
+					if self.autoMapping and roomDict["movement"] in DIRECTIONS and (roomDict["movement"] not in self.currentRoom.exits or self.currentRoom.exits[roomDict["movement"]].to not in self.rooms):
+						if self.autoMerging:
+							self.autoMerge(roomDict)
+						else:
+							self.addRoom(roomDict)
+					self.move(roomDict["movement"])
+					if self.autoWalkDirections:
+						# The player is auto-walking. Send the next direction to Mume.
+						self.walkNextDirection()
+				# If necessary, try to sync the map to the current room.
+				if not roomDict["name"] or roomDict["name"] in ("You just see a dense fog around you...", "It is pitch black...") or not self.isSynced and not self.sync(roomDict["name"]):
+					# The room is dark, foggy, or the mapper was unable to sync to the current room.
+					continue
+				# The map is now synced.
+				doors = []
+				deathTraps = []
+				oneWays = []
+				undefineds = []
+				for direction, exitObj in iterItems(self.currentRoom.exits):
+					if exitObj.door and exitObj.door != "exit":
+						doors.append("%s: %s" % (direction, exitObj.door))
+					if not exitObj.to or exitObj.to == "undefined":
+						undefineds.append(direction)
+					elif exitObj.to == "death":
+						deathTraps.append(direction)
+					elif REVERSE_DIRECTIONS[direction] not in self.rooms[exitObj.to].exits or self.rooms[exitObj.to].exits[REVERSE_DIRECTIONS[direction]].to != self.currentRoom.vnum:
+						oneWays.append(direction)
+				if doors:
+					self.clientSend("Doors: %s" % ", ".join(doors))
+				if deathTraps:
+					self.clientSend("Death Traps: %s" % ", ".join(deathTraps))
+				if oneWays:
+					self.clientSend("One ways: %s" % ", ".join(oneWays))
+				if undefineds:
+					self.clientSend("Undefineds: %s" % ", ".join(undefineds))
+				if self.currentRoom.note:
+					self.clientSend("Note: %s" % self.currentRoom.note)
+				if self.autoMapping:
+					# If necessary, update the current room's information in the database with the information received from Mume.
+					self.updateCurrentRoom(roomDict)
 		# end while, mapper thread ending.
-		# Join the MPI threads (if any) before joining the Mapper thread.
-		for mpiThread in self.mpiThreads:
-			mpiThread.join()
 		self.clientSend("Exiting mapper thread.")
-
-
-class Proxy(threading.Thread):
-	def __init__(self, client, server, mapperQueue):
-		threading.Thread.__init__(self)
-		self.daemon = True
-		self._client = client
-		self._server = server
-		self._mapperQueue = mapperQueue
-		self.alive = threading.Event()
-
-	def close(self):
-		self.alive.clear()
-
-	def run(self):
-		self.alive.set()
-		while self.alive.isSet():
-			try:
-				data = self._client.recv(4096)
-			except socket.timeout:
-				continue
-			except IOError:
-				self.close()
-				continue
-			if not data:
-				self.close()
-				continue
-			elif USER_COMMANDS_REGEX.match(data):
-				# True tells the mapper thread that the data is from the user's Mud client.
-				self._mapperQueue.put((True, data))
-				continue
-			self._server.sendall(data)
-
-
-class Server(threading.Thread):
-	def __init__(self, client, server, mapperQueue, outputFormat):
-		threading.Thread.__init__(self)
-		self.daemon = True
-		self._client = client
-		self._server = server
-		self._mapperQueue = mapperQueue
-		self._outputFormat = outputFormat
-
-	def upperMatch(self, match):
-		tag = match.group("tag").upper()
-		text = match.group("text")
-		if text is None:
-			text = b""
-		else:
-			text = text.replace(b"\r\n", b"\n").replace(b"\n", b" ").strip()
-		if tag == b"PROMPT" or tag == b"ENEMY":
-			lineEnd = b""
-			if tag == b"PROMPT":
-				text = text.replace(b"<enemy>", b"").replace(b"</enemy>", b"")
-		else:
-			lineEnd = b"\r\n"
-		return b"".join((tag, b":", text, b":", tag, lineEnd))
-
-	def run(self):
-		normalFormat = self._outputFormat == "normal"
-		tinTinFormat = self._outputFormat == "tintin"
-		rawFormat = self._outputFormat == "raw"
-		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
-		encounteredInitialOutput = False
-		while True:
-			data = self._server.recv(4096)
-			if not data:
-				break
-			elif not encounteredInitialOutput and data.startswith(initialOutput):
-				# Identify for Mume Remote Editing.
-				self._server.sendall(b"~$#EI\n")
-				# Turn on XML mode.
-				self._server.sendall(b"~$#EX1\n3\n")
-				# Tell the Mume server to put IAC-GA at end of prompts.
-				self._server.sendall(b"~$#EP2\nG\n")
-				encounteredInitialOutput = True
-			# False tells the mapper thread that the data is from the Mume server, and *not* from the user's Mud client.
-			self._mapperQueue.put((False, data))
-			if tinTinFormat:
-				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
-				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
-				data = multiReplace(data, XML_UNESCAPE_PATTERNS).replace(b"\r\n", b"\n").replace(b"\n\n", b"\n")
-			elif normalFormat:
-				data = NORMAL_IGNORE_TAGS_REGEX.sub(b"", data)
-				data = multiReplace(data, XML_UNESCAPE_PATTERNS)
-			self._client.sendall(data)
-
-
-def main(outputFormat="normal"):
-	outputFormat = outputFormat.strip().lower()
-	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	proxySocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-	proxySocket.bind(("", 4000))
-	proxySocket.listen(1)
-	clientConnection, proxyAddress = proxySocket.accept()
-	clientConnection.settimeout(1.0)
-	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	serverConnection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-	try:
-		serverConnection.connect(("193.134.218.99", 443))
-	except TimeoutError:
-		clientConnection.sendall(b"\r\nError: server connection timed out!\r\n")
-		try:
-			clientConnection.sendall(b"\r\n")
-			clientConnection.shutdown(socket.SHUT_RDWR)
-		except:
-			pass
-		clientConnection.close()
-		return
-	mapperQueue = Queue()
-	mapperThread = Mapper(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, outputFormat=outputFormat)
-	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue)
-	serverThread = Server(client=clientConnection, server=serverConnection, mapperQueue=mapperQueue, outputFormat=outputFormat)
-	serverThread.start()
-	proxyThread.start()
-	mapperThread.start()
-	serverThread.join()
-	try:
-		serverConnection.shutdown(socket.SHUT_RDWR)
-	except:
-		pass
-	mapperQueue.put((None, None))
-	mapperThread.join()
-	try:
-		clientConnection.sendall(b"\r\n")
-		proxyThread.close()
-		clientConnection.shutdown(socket.SHUT_RDWR)
-	except:
-		pass
-	proxyThread.join()
-	serverConnection.close()
-	clientConnection.close()
