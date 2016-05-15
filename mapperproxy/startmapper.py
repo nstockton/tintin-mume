@@ -2,7 +2,7 @@
 
 import sys
 
-import mapper.mapper
+import mapper.main
 
 if __name__ == "__main__":
 	if sys.argv:
@@ -11,4 +11,4 @@ if __name__ == "__main__":
 			outputFormat = "normal"
 	else:
 		outputFormat = "normal"
-	mapper.mapper.main(outputFormat)
+	mapper.main.main(outputFormat)

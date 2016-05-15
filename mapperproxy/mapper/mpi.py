@@ -4,7 +4,6 @@
 
 import os
 import random
-import re
 import subprocess
 import sys
 from telnetlib import IAC
@@ -17,13 +16,14 @@ from .utils import decodeBytes
 TMP_DIR = tempfile.gettempdir()
 
 class MPI(threading.Thread):
-	def __init__(self, client, server, isTinTin=None, mpiMatch=None):
+	def __init__(self, client, server, isTinTin=None, command=None, data=None):
 		threading.Thread.__init__(self)
 		self.daemon = True
 		self._client = client
 		self._server = server
 		self.isTinTin = bool(isTinTin)
-		self.mpiMatch = mpiMatch
+		self.command = decodeBytes(command)
+		self.data = decodeBytes(data)
 		if sys.platform == "win32":
 			self.editor = "notepad"
 			self.pager = "notepad"
@@ -32,30 +32,22 @@ class MPI(threading.Thread):
 			self.pager = os.getenv("TINTINPAGER", "less")
 
 	def run(self):
-		if not self.mpiMatch:
+		if self.command is None or self.data is None:
 			return
-		command = self.mpiMatch["command"]
-		length = int(self.mpiMatch["length"])
-		session = self.mpiMatch["session"] if self.mpiMatch["session"] else ""
-		if session:
-			length -= len(session) + 1
-		description = self.mpiMatch["description"] if self.mpiMatch["description"] else ""
-		if description:
-			length -= len(description) + 1
-		body = self.mpiMatch["body"][:length].replace("\r", "").replace("\n", "\r\n")
-		if command == "V":
+		elif self.command == "V":
 			fileName = os.path.join(TMP_DIR, "V%d.txt" % random.randint(1000, 9999))
 			with open(fileName, "wb") as fileObj:
-				fileObj.write(body.encode("utf-8"))
+				fileObj.write(self.data.replace("\n", "\r\n").encode("utf-8"))
 			if self.isTinTin:
 				print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.pager, fileName))
 			else:
 				pagerProcess = subprocess.Popen(self.pager.split() + [fileName])
 				pagerProcess.wait()
-		elif command == "E":
+		elif self.command == "E":
+			session, description, body = self.data.split("\n", 2)
 			fileName = os.path.join(TMP_DIR, "%s.txt" % session)
 			with open(fileName, "wb") as fileObj:
-				fileObj.write(body.encode("utf-8"))
+				fileObj.write(body.replace("\n", "\r\n").encode("utf-8"))
 			if self.isTinTin:
 				print("MPICOMMAND:{0} {1}:MPICOMMAND".format(self.editor, fileName))
 				try:
@@ -66,5 +58,5 @@ class MPI(threading.Thread):
 				editorProcess = subprocess.Popen(self.editor.split() + [fileName])
 				editorProcess.wait()
 			with open(fileName, "rb") as fileObj:
-				response = b"\n".join([self.mpiMatch["session"].replace("M", "E").encode("utf-8"), fileObj.read().replace(b"\r", b"").replace(IAC, IAC + IAC)])
-			self._server.sendall(b"".join((b"~$#EE", str(len(response)).encode("utf-8"), b"\n", response)))
+				response = b"\n".join((session.replace("M", "E").encode("utf-8"), fileObj.read().strip().replace(b"\r", b"").replace(IAC, IAC + IAC)))
+			self._server.sendall(b"".join((b"~$#EE", str(len(response)).encode("utf-8"), b"\n", response, b"\n")))
