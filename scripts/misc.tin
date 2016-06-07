@@ -6,19 +6,8 @@
 #action {^You can only gain one level at a time... Reduced experience.$} {#bell}
 #action {^Text will be word-wrapped.$} {#send {change wordwrap off}}
 
-#nop Store the current room description
-#action {~^DESCRIPTION:%1:DESCRIPTION$} {
-	#echo {%s} {%1};
-	#line {strip} {
-		#var {roomDescription} {%1}
-	};
-	#line {gag}
-}
-
 #alias {cpouch} {#send {remove cloak\nremove fur\nget cloak pouch\nwear cloak\nput cloak pouch\nput fur pouch}}
 #alias {fpack} {#send {remove cloak\nremove fur\nget fur pack\nwear fur\nput cloak pack\nput fur pack}}
 #alias {ws} {#send {wake\nstand}}
 #alias {cpack} {#send {remove cloak\nremove fur\nget cloak pack\nwear cloak\nput cloak pack\nput fur pack}}
 #alias {bpouch} {#send {remove boots\nget boots pouch\nwear boots\nput boots pouch}}
-
-#var {roomDescription} {}
