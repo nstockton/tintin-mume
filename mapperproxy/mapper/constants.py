@@ -21,12 +21,6 @@ RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?
 
 USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|path|vnum|tvnum|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
-TINTIN_IGNORE_TAGS_REGEX = re.compile(br"<movement(?: dir=(?:north|south|east|west|up|down))?/>|<[/]?(?:xml|terrain|magic|weather|room|exits|header|status|song|shout|yell|social|hit|damage|avoid_damage|miss|familiar|snoop.*?|highlight.*?)>")
-
-TINTIN_SEPARATE_TAGS_REGEX = re.compile(br"<(?P<tag>enemy|prompt|name|description|tell|say|narrate|pray|emote)>(?P<text>.*?)</(?P=tag)>", re.DOTALL|re.MULTILINE)
-
-NORMAL_IGNORE_TAGS_REGEX = re.compile(br"<[^>]*>")
-
 PROMPT_REGEX = re.compile(r"^(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?>$")
 
 EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
