@@ -25,9 +25,9 @@ class MumeXMLParser(object):
 	def __init__(self):
 		self._xmlMode = XML_NONE
 		self.rooms = []
-		self._ignore = None
+		self._scouting = None
 		self._movement = None
-		self.lastPrompt = ">"
+		self.prompt = ">"
 
 	def parse(self, data):
 		[roomDict.clear() for roomDict in self.rooms]
@@ -65,13 +65,14 @@ class MumeXMLParser(object):
 			elif line.startswith("exits"):
 				self._xmlMode = XML_EXITS
 			elif line.startswith("room"):
-				self.rooms.append({"name": "", "description": "", "dynamic": "", "exits": "", "prompt": "", "ignore": False})
+				self.rooms.append({"name": "", "description": "", "dynamic": "", "exits": ""})
 				if self._movement is not None:
 					self.rooms[-1]["movement"] = self._movement
 					self._movement = None
 				self._xmlMode = XML_ROOM
 			elif line.startswith("movement"):
 				self._movement = line[8:].replace(" dir=", "", 1).split("/", 1)[0]
+				self._scouting = None
 			elif line.startswith("status"):
 				self._xmlMode = XML_NONE
 		elif self._xmlMode == XML_ROOM:
@@ -84,31 +85,31 @@ class MumeXMLParser(object):
 				self._xmlMode = XML_TERRAIN
 			elif line.startswith("/room"):
 				self._xmlMode = XML_NONE
-		elif self._xmlMode == XML_NAME:
-			if line.startswith("/name"):
-				self._xmlMode = XML_ROOM
-		elif self._xmlMode == XML_DESCRIPTION:
-			if line.startswith("/description"):
-				self._xmlMode = XML_ROOM
-		elif self._xmlMode == XML_EXITS:
-			if line.startswith("/exits"):
-				self._xmlMode = XML_NONE
-		elif self._xmlMode == XML_PROMPT:
-			if line.startswith("/prompt"):
-				self._xmlMode = XML_NONE
-		elif self._xmlMode == XML_TERRAIN:
-			if line.startswith("/terrain"):
-				self._xmlMode = XML_ROOM
+		elif self._xmlMode == XML_NAME and line.startswith("/name"):
+			self._xmlMode = XML_ROOM
+		elif self._xmlMode == XML_DESCRIPTION and line.startswith("/description"):
+			self._xmlMode = XML_ROOM
+		elif self._xmlMode == XML_TERRAIN and line.startswith("/terrain"):
+			self._xmlMode = XML_ROOM
+		elif self._xmlMode == XML_EXITS and line.startswith("/exits"):
+			self._xmlMode = XML_NONE
+		elif self._xmlMode == XML_PROMPT and line.startswith("/prompt"):
+			self._xmlMode = XML_NONE
+			if self.rooms:
+				match = PROMPT_REGEX.search(self.prompt)
+				if self._scouting:
+					del self.rooms[-1]
+				elif match is not None:
+					self.rooms[-1].update(match.groupdict())
+			self._scouting = None
 
 	def _text(self, data):
 		data = self.unescape(data)
 		if not data:
 			return
 		elif self._xmlMode == XML_NONE:
-			if "You were not able to keep your concentration while moving." in data and "You stop scouting." in data:
-				self._ignore = None
-			elif "You quietly scout " in data or "You can't seem to escape the roots!" in data:
-				self._ignore = True
+			if "You quietly scout " in data:
+				self._scouting = True
 			return
 		elif not self.rooms:
 			return
@@ -123,14 +124,7 @@ class MumeXMLParser(object):
 		elif self._xmlMode == XML_EXITS:
 			roomDict["exits"] = data
 		elif self._xmlMode == XML_PROMPT:
-			roomDict["prompt"] = data
-			self.lastPrompt = data
-			match = PROMPT_REGEX.search(data)
-			if match is not None:
-				roomDict.update(match.groupdict())
-			if self._ignore:
-				roomDict["ignore"] = True
-				self._ignore = None
+			self.prompt = data
 
 	def unescape(self, data):
 		return simplified(multiReplace(data, XML_UNESCAPE_PATTERNS))

@@ -6,7 +6,7 @@ import socket
 from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA, TTYPE, NAWS
 import threading
 
-from .constants import USER_COMMANDS_REGEX, TINTIN_IGNORE_TAGS_REGEX, TINTIN_SEPARATE_TAGS_REGEX, NORMAL_IGNORE_TAGS_REGEX, XML_UNESCAPE_PATTERNS
+from .constants import USER_COMMANDS_REGEX, XML_UNESCAPE_PATTERNS
 from .mapper import USER_DATA, MUD_DATA, Mapper
 from .mpi import MPI
 from .utils import multiReplace
@@ -51,21 +51,6 @@ class Server(threading.Thread):
 		self._mapper = mapper
 		self._outputFormat = outputFormat
 
-	def upperMatch(self, match):
-		tag = match.group("tag").upper()
-		text = match.group("text")
-		if text is None:
-			text = b""
-		else:
-			text = text.replace(b"\r\n", b"\n").replace(b"\n", b" ").strip()
-		if tag == b"PROMPT" or tag == b"ENEMY":
-			lineEnd = b""
-			if tag == b"PROMPT":
-				text = text.replace(b"<enemy>", b"").replace(b"</enemy>", b"")
-		else:
-			lineEnd = b"\r\n"
-		return b"".join((tag, b":", text, b":", tag, lineEnd))
-
 	def run(self):
 		normalFormat = self._outputFormat == "normal"
 		tinTinFormat = self._outputFormat == "tintin"
@@ -76,6 +61,7 @@ class Server(threading.Thread):
 		ordSB = ord(SB)
 		ordSE = ord(SE)
 		ordGA = ord(GA)
+		ordLF = ord("\n")
 		inIAC = False
 		inSubOption = False
 		inMPI = False
@@ -86,6 +72,24 @@ class Server(threading.Thread):
 		mpiBuffer = bytearray()
 		clientBuffer = bytearray()
 		mapperBuffer = bytearray()
+		tagBuffer = bytearray()
+		readingTag = False
+		tagReplacements = {
+			"prompt": "PROMPT:",
+			"/prompt": ":PROMPT",
+			"name": "NAME:",
+			"/name": ":NAME",
+			"tell": "TELL:",
+			"/tell": ":TELL",
+			"narrate": "NARRATE:",
+			"/narrate": ":NARRATE",
+			"pray": "PRAY:",
+			"/pray": ":PRAY",
+			"say": "SAY:",
+			"/say": ":SAY",
+			"emote": "EMOTE:",
+			"/emote": ":EMOTE"
+		}
 		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
 		encounteredInitialOutput = False
 		while True:
@@ -108,76 +112,89 @@ class Server(threading.Thread):
 					elif inSubOption or byte in ignoreBytes:
 						clientBuffer.append(byte)
 					elif inMPI:
-						if byte == 10 and mpiCommand is None and mpiLen is None:
+						if byte == ordLF and mpiCommand is None and mpiLen is None:
+							# The first line of MPI data was recieved.
+							# The first byte is the MPI command, E for edit, V for view.
+							# The remaining byte sequence is the length of the MPI data to be received.
 							if mpiBuffer[0:1] in (b"E", b"V") and mpiBuffer[1:].isdigit():
 								mpiCommand = mpiBuffer[0:1]
 								mpiLen = int(mpiBuffer[1:])
 							else:
+								# Invalid MPI command or length.
 								inMPI = False
 							del mpiBuffer[:]
-							continue
-						mpiBuffer.append(byte)
-						if mpiLen is not None and len(mpiBuffer) >= mpiLen:
-							# start MPI thread
-							mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=tinTinFormat, command=mpiCommand, data=bytes(mpiBuffer)))
-							mpiThreads[-1].start()
-							del mpiBuffer[:]
-							mpiCommand = None
-							mpiLen = None
-							inMPI = False
+						else:
+							mpiBuffer.append(byte)
+							if mpiLen is not None and len(mpiBuffer) >= mpiLen:
+								# The last byte in the MPI data has been reached.
+								mpiThreads.append(MPI(client=self._client, server=self._server, isTinTin=tinTinFormat, command=mpiCommand, data=bytes(mpiBuffer)))
+								mpiThreads[-1].start()
+								del mpiBuffer[:]
+								mpiCommand = None
+								mpiLen = None
+								inMPI = False
 					elif byte == 126 and mpiCounter == 0 and clientBuffer.endswith(b"\n") or byte == 36 and mpiCounter == 1 or byte == 35 and mpiCounter == 2:
+						# Byte is one of the first 3 bytes in the 4-byte MPI sequence (~$#E).
 						mpiCounter = mpiCounter + 1
 					elif byte == 69 and mpiCounter == 3:
-						mpiCounter = 0
+						# Byte is the final byte in the 4-byte MPI sequence (~$#E).
 						inMPI = True
-					else:
+						mpiCounter = 0
+					elif rawFormat:
 						mpiCounter = 0
 						clientBuffer.append(byte)
 						mapperBuffer.append(byte)
+					elif readingTag:
+						mpiCounter = 0
+						mapperBuffer.append(byte)
+						if byte == 62: # >
+							if tinTinFormat:
+								clientBuffer.extend(tagReplacements.get(bytes(tagBuffer), b""))
+							del tagBuffer[:]
+							readingTag = False
+						else:
+							tagBuffer.append(byte)
+					else:
+						mpiCounter = 0
+						mapperBuffer.append(byte)
+						if byte == 60: # <
+							readingTag = True
+						else:
+							clientBuffer.append(byte)
 				else:
+					clientBuffer.append(byte)
 					if byte in negotiationBytes:
 						# This is the second byte in a 3-byte telnet option sequence.
 						# Skip the byte, and move on to the next.
-						clientBuffer.append(byte)
 						continue
 					# From this point on, byte is the final byte in a 2-3 byte telnet option sequence.
 					inIAC = False
 					if byte == ordSB:
 						# Sub-option negotiation begin
-						clientBuffer.append(byte)
 						inSubOption = True
 					elif byte == ordSE:
 						# Sub-option negotiation end
-						clientBuffer.append(byte)
 						inSubOption = False
 					elif inSubOption:
 						# Ignore subsequent bytes until the sub option negotiation has ended.
-						clientBuffer.append(byte)
 						continue
 					elif byte == ordIAC:
 						# This is an escaped IAC byte to be added to the buffer.
 						mpiCounter = 0
 						if inMPI:
 							mpiBuffer.append(byte)
-							del clientBuffer[-1]
+							# IAC + IAC was appended to the client buffer earlier.
+							# It must be removed as MPI data should not be sent to the mud client.
+							del clientBuffer[-2:]
 						else:
-							clientBuffer.append(byte)
 							mapperBuffer.append(byte)
 					elif byte == ordGA:
 						# Mume will send an IAC-GA sequence after every prompt.
-						clientBuffer.append(byte)
 						self._mapper.queue.put((MUD_DATA, bytes(mapperBuffer)))
 						del mapperBuffer[:]
-					else:
-						clientBuffer.append(byte)
 			data = bytes(clientBuffer)
-			if tinTinFormat:
-				data = TINTIN_IGNORE_TAGS_REGEX.sub(b"", data)
-				data = TINTIN_SEPARATE_TAGS_REGEX.sub(self.upperMatch, data)
-				data = multiReplace(data, XML_UNESCAPE_PATTERNS).replace(b"\r\n", b"\n").replace(b"\n\n", b"\n")
-			elif normalFormat:
-				data = NORMAL_IGNORE_TAGS_REGEX.sub(b"", data)
-				data = multiReplace(data, XML_UNESCAPE_PATTERNS)
+			if not rawFormat:
+				data = multiReplace(data, XML_UNESCAPE_PATTERNS).replace(b"\r", b"").replace(b"\n\n", b"\n")
 			self._client.sendall(data)
 			del clientBuffer[:]
 		# Join the MPI threads (if any) before joining the Mapper thread.
@@ -206,7 +223,7 @@ def main(outputFormat="normal"):
 			pass
 		clientConnection.close()
 		return
-	mapperThread = Mapper(client=clientConnection, server=serverConnection, outputFormat=outputFormat)
+	mapperThread = Mapper(client=clientConnection, server=serverConnection)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapper=mapperThread)
 	serverThread = Server(client=clientConnection, server=serverConnection, mapper=mapperThread, outputFormat=outputFormat)
 	serverThread.start()
