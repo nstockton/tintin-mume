@@ -75,20 +75,20 @@ class Server(threading.Thread):
 		tagBuffer = bytearray()
 		readingTag = False
 		tagReplacements = {
-			"prompt": "PROMPT:",
-			"/prompt": ":PROMPT",
-			"name": "NAME:",
-			"/name": ":NAME",
-			"tell": "TELL:",
-			"/tell": ":TELL",
-			"narrate": "NARRATE:",
-			"/narrate": ":NARRATE",
-			"pray": "PRAY:",
-			"/pray": ":PRAY",
-			"say": "SAY:",
-			"/say": ":SAY",
-			"emote": "EMOTE:",
-			"/emote": ":EMOTE"
+			b"prompt": b"PROMPT:",
+			b"/prompt": b":PROMPT",
+			b"name": b"NAME:",
+			b"/name": b":NAME",
+			b"tell": b"TELL:",
+			b"/tell": b":TELL",
+			b"narrate": b"NARRATE:",
+			b"/narrate": b":NARRATE",
+			b"pray": b"PRAY:",
+			b"/pray": b":PRAY",
+			b"say": b"SAY:",
+			b"/say": b":SAY",
+			b"emote": b"EMOTE:",
+			b"/emote": b":EMOTE"
 		}
 		initialOutput = b"".join((IAC, DO, TTYPE, IAC, DO, NAWS))
 		encounteredInitialOutput = False
