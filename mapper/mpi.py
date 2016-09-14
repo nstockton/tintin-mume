@@ -45,7 +45,7 @@ class MPI(threading.Thread):
 				pagerProcess.wait()
 		elif self.command == "E":
 			session, description, body = self.data.split("\n", 2)
-			fileName = os.path.join(TMP_DIR, "%s.txt" % session)
+			fileName = os.path.join(TMP_DIR, "M%d.txt" % random.randint(1000, 9999))
 			with open(fileName, "wb") as fileObj:
 				fileObj.write(body.replace("\n", "\r\n").encode("utf-8"))
 			if self.isTinTin:
