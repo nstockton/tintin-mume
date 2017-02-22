@@ -7,3 +7,5 @@ __pycache__/
 
 # Logs
 most_recent.log
+# Mapper debug file
+debug.log
