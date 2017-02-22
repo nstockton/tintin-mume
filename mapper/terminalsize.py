@@ -1,6 +1,8 @@
 # This module adapted from:
 # https://gist.github.com/1108174.git
 
+from __future__ import print_function
+
 import os
 import platform
 import shlex

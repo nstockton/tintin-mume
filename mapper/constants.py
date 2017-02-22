@@ -21,7 +21,7 @@ RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?
 
 USER_COMMANDS_REGEX = re.compile(br"^(?P<command>gettimer|gettimerms|secretaction|automap|autoupdate|automerge|autolink|run|stop|path|vnum|tvnum|rinfo|savemap|sync|rdelete|rnote|ralign|rlight|rportable|rridable|ravoid|rterrain|rx|ry|rz|rmobflags|rloadflags|exitflags|doorflags|secret|rlink|rlabel)(?:\s+(?P<arguments>.*))?$")
 
-PROMPT_REGEX = re.compile(r"^(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4}).*?>$")
+PROMPT_REGEX = re.compile(r"^(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4})[^\>]*\>$")
 
 EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
 
@@ -120,6 +120,24 @@ TERRAIN_COSTS = {
 	"death": 1000.0
 }
 
+TERRAIN_COLORS = {
+	"cavern": (153, 50, 204, 255),
+	"city": (190, 190, 190, 255),
+	"indoors": (186, 85, 211, 255),
+	"tunnel": (153, 50, 204, 255),
+	"road": (255, 255, 255, 255),
+	"field": (124, 252, 0, 255),
+	"brush": (127, 255, 0, 255),
+	"forest": (8, 128, 0, 255),
+	"hills": (139, 69, 19 ,255),
+	"shallowwater": (218, 120, 245, 255),
+	"mountains": (165, 42, 42, 255),
+	"water": (32, 64, 192, 255),
+	"rapids": (32, 64, 192, 255),
+	"underwater": (48, 8, 120, 255),
+	"unknown": (24, 16, 32, 255)
+}
+
 TERRAIN_SYMBOLS = {
 	":": "brush",
 	"O": "cavern",
@@ -209,8 +227,8 @@ VALID_DOOR_FLAGS = [
 ]
 
 DIRECTION_COORDINATES = {
-	"north": (0, -1, 0),
-	"south": (0, 1, 0),
+	"north": (0, 1, 0),
+	"south": (0, -1, 0),
 	"west": (-1, 0, 0),
 	"east": (1, 0, 0),
 	"up": (0, 0, 1),
