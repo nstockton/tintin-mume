@@ -227,18 +227,19 @@ class Mapper(threading.Thread, World):
 			self.sync(vnum=args[0].strip())
 
 	def walkNextDirection(self):
-		if self.autoWalkDirections:
+		if not self.autoWalkDirections:
+			return
+		while self.autoWalkDirections:
 			command = self.autoWalkDirections.pop()
+			if not self.autoWalkDirections:
+				self.clientSend("Arriving at destination.")
 			if command in DIRECTIONS:
-				# Command is a valid direction.
 				# Send the first character of the direction to Mume.
 				self.serverSend(command[0])
+				break
 			else:
 				# command is a non-direction such as 'lead' or 'ride'.
 				self.serverSend(command)
-			if not self.autoWalkDirections:
-				# There will be no more auto-walk directions after this one is sent.
-				self.clientSend("Arriving at destination.")
 
 	def stopRun(self):
 		self.autoWalkDirections = []
