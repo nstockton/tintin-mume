@@ -1,7 +1,7 @@
-#action {^%w {picks up|dismounts from} a {pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf}{( \(\w\))?}{\'s reins and starts|\, and stops} riding {him|her|it}.$} {
+#action {^%w {picks up|grabs on to|dismounts from} a {pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf}{( \(\w\))?}{\'s (reins|fur) and starts|\, and stops} riding {him|her|it}.$} {
 	#if {("%1" == "$leader") && ("$auto_ride" == "on")} {
 		#if {"%2" == "dismounts from"} {#send {lead}};
-		#elseif {"%2" == "picks up"} {#send {ride}}
+		#else {#send {ride}}
 	}
 }
 #action {^%w reaches up and tries to climb the ladder.$} {
