@@ -477,12 +477,12 @@ class Mapper(threading.Thread, World):
 								self.clientSend("Updating room dynamic description.")
 							self.updateExitFlags(exits)
 							self.updateRoomFlags(prompt)
-						self.roomDetails()
 					if self.autoWalkDirections:
 						# The player is auto-walking. Send the next direction to Mume.
 						self.walkNextDirection()
-				if not self.isSynced and name:
-					self.sync(name)
+				if name:
+					if self.isSynced or self.sync(name):
+						self.roomDetails()
 				addedNewRoom = False
 				scouting = False
 				movement = None
