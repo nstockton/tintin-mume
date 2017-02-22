@@ -1,0 +1,123 @@
+{
+  "debug_level": null,
+  "gui": {
+    "blink": true,
+    "blink_rate": 2,
+    "current_room_mark_color": [
+      255,
+      255,
+      255,
+      255
+    ],
+    "current_room_mark_radius": 10,
+    "exit_color1": [
+      255,
+      228,
+      225,
+      255
+    ],
+    "exit_color2": [
+      0,
+      0,
+      0,
+      255
+    ],
+    "exit_radius": 10,
+    "fullscreen": false,
+    "room_size": 100,
+    "spacer": 10,
+    "terrain_colors": {
+      "brush": [
+        127,
+        255,
+        0,
+        255
+      ],
+      "cavern": [
+        153,
+        50,
+        204,
+        255
+      ],
+      "city": [
+        190,
+        190,
+        190,
+        255
+      ],
+      "field": [
+        124,
+        252,
+        0,
+        255
+      ],
+      "forest": [
+        8,
+        128,
+        0,
+        255
+      ],
+      "hills": [
+        139,
+        69,
+        19,
+        255
+      ],
+      "indoors": [
+        186,
+        85,
+        211,
+        255
+      ],
+      "mountains": [
+        165,
+        42,
+        42,
+        255
+      ],
+      "rapids": [
+        32,
+        64,
+        192,
+        255
+      ],
+      "road": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "shallowwater": [
+        218,
+        120,
+        245,
+        255
+      ],
+      "tunnel": [
+        153,
+        50,
+        204,
+        255
+      ],
+      "underwater": [
+        48,
+        8,
+        120,
+        255
+      ],
+      "unknown": [
+        24,
+        16,
+        32,
+        255
+      ],
+      "water": [
+        32,
+        64,
+        192,
+        255
+      ]
+    }
+  },
+  "use_gui": true
+}

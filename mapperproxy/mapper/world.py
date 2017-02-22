@@ -2,12 +2,19 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import print_function
+
 import codecs
 import heapq
 import itertools
 import json
 import os.path
+try:
+	from Queue import Queue
+except ImportError:
+	from queue import Queue
 import re
+import threading
 
 from .constants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, DIRECTION_COORDINATES, REVERSE_DIRECTIONS
 from .utils import iterItems, getDirectoryPath, regexFuzzy
@@ -53,6 +60,8 @@ class Room(object):
 
 class Exit(object):
 	def __init__(self):
+		self.direction = None
+		self.vnum = None
 		self.to = "undefined"
 		self.exitFlags = set(["exit"])
 		self.door = ""
@@ -60,13 +69,34 @@ class Exit(object):
 
 
 class World(object):
-	def __init__(self):
+	def __init__(self, use_gui=True):
 		self.isSynced = False
 		self.rooms = {}
 		self.labels = {}
-		self.currentRoom = None
+		self._use_gui = use_gui
+		if use_gui:
+			self._gui_queue = Queue()
+			self._gui_queue_lock = threading.Lock()
+			from .window import Window
+			self.window=Window(self)
+		self._currentRoom = None
 		self.loadRooms()
 		self.loadLabels()
+
+	@property
+	def currentRoom(self):
+		return self._currentRoom
+
+	@currentRoom.setter
+	def currentRoom(self, value):
+		self._currentRoom = value
+		if self._use_gui:
+			with self._gui_queue_lock:
+				self._gui_queue.put(('on_map_sync', value))
+
+	@currentRoom.deleter
+	def currentRoom(self):
+		del self._currentRoom
 
 	def output(self, text):
 		print(text)
@@ -123,11 +153,10 @@ class World(object):
 			newRoom.z = roomDict["z"]
 			newRoom.calculateCost()
 			for direction, exitDict in iterItems(roomDict["exits"]):
-				newExit = Exit()
+				newExit = self.getNewExit(direction, exitDict["to"], vnum)
 				newExit.exitFlags = set(exitDict["exitFlags"])
 				newExit.doorFlags = set(exitDict["doorFlags"])
 				newExit.door = exitDict["door"]
-				newExit.to = exitDict["to"]
 				newRoom.exits[direction] = newExit
 			self.rooms[vnum] = newRoom
 			roomDict.clear()
@@ -200,8 +229,63 @@ class World(object):
 		with codecs.open(labelsFile, "wb", encoding="utf-8") as fileObj:
 			json.dump(self.labels, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
 
+	def getNewExit(self, direction, to="undefined", parent=None):
+		newExit = Exit()
+		newExit.direction = direction
+		newExit.to = to
+		newExit.vnum = self.currentRoom.vnum if parent is None else parent
+		return newExit
+
 	def sortExits(self, exitsDict):
 		return sorted(iterItems(exitsDict), key=lambda direction: DIRECTIONS.index(direction[0]) if direction[0] in DIRECTIONS else len(DIRECTIONS))
+
+	def isExitLogical(self,exit):
+		try:
+			dest = self.rooms[exit.to]
+		except KeyError:
+			return False
+		revdir = REVERSE_DIRECTIONS[exit.direction]
+		if revdir in dest.exits and dest.exits[revdir].to == exit.vnum:
+			return True
+		else:
+			return False
+
+	def getNeighborsFromCoordinates(self, start=None, radius=1):
+		"""A generator which yields all rooms in the vicinity of the given X-Y-Z coordinates.
+		Each yielded result contains the vnum, room object reference, and difference in X-Y-Z coordinates."""
+		try:
+			iter(start)
+		except TypeError:
+			x, y, z = 0, 0, 0
+		else:
+			x, y, z = start
+		try:
+			iter(radius)
+		except TypeError:
+			radiusX = radiusY = radiusZ = int(radius)
+		else:
+			radiusX, radiusY, radiusZ = radius
+		for vnum, obj in iterItems(self.rooms):
+			differenceX, differenceY, differenceZ = obj.x - x, obj.y - y, obj.z - z
+			if abs(differenceX) <= radiusX and abs(differenceY) <= radiusY and abs(differenceZ) <= radiusZ and any(difference):
+				yield(vnum, obj, differenceX, differenceY, differenceZ)
+
+	def getNeighborsFromRoom(self, start=None, radius=1):
+		"""A generator which yields all rooms in the vicinity of a room object.
+		Each yielded result contains the vnum, room object reference, and difference in X-Y-Z coordinates."""
+		if start is None:
+			start = self.currentRoom
+		x, y, z = start.x, start.y, start.z
+		try:
+			iter(radius)
+		except TypeError:
+			radiusX = radiusY = radiusZ = int(radius)
+		else:
+			radiusX, radiusY, radiusZ = radius
+		for vnum, obj in iterItems(self.rooms):
+			differenceX, differenceY, differenceZ = obj.x - x, obj.y - y, obj.z - z
+			if abs(differenceX) <= radiusX and abs(differenceY) <= radiusY and abs(differenceZ) <= radiusZ and obj is not start:
+				yield(vnum, obj, differenceX, differenceY, differenceZ)
 
 	def getVnum(self, roomObj=None):
 		result = None
@@ -450,7 +534,7 @@ class World(object):
 			if not matchDict["name"]:
 				return "Error: 'add' expects a name for the secret."
 			elif direction not in self.currentRoom.exits:
-				self.currentRoom.exits[direction] = Exit()
+				self.currentRoom.exits[direction] = self.getNewExit(direction)
 			self.currentRoom.exits[direction].exitFlags.add("door")
 			self.currentRoom.exits[direction].doorFlags.add("hidden")
 			self.currentRoom.exits[direction].door = matchDict["name"]
@@ -483,14 +567,13 @@ class World(object):
 			elif matchDict["vnum"] != "undefined" and matchDict["vnum"] not in self.rooms:
 				return "Error: vnum %s not in database." % matchDict["vnum"]
 			elif direction not in self.currentRoom.exits:
-				self.currentRoom.exits[direction] = Exit()
+				self.currentRoom.exits[direction] = self.getNewExit(direction)
 			self.currentRoom.exits[direction].to = matchDict["vnum"]
 			if matchDict["vnum"] == "undefined":
 				return "Direction %s now undefined." % direction
 			elif not matchDict["oneway"]:
 				if reversedDirection not in self.rooms[matchDict["vnum"]].exits or self.rooms[matchDict["vnum"]].exits[reversedDirection].to == "undefined":
-					self.rooms[matchDict["vnum"]].exits[reversedDirection] = Exit()
-					self.rooms[matchDict["vnum"]].exits[reversedDirection].to = self.currentRoom.vnum
+					self.rooms[matchDict["vnum"]].exits[reversedDirection] = self.getNewExit(reversedDirection, self.currentRoom.vnum)
 					return "Linking direction %s to %s with name '%s'.\nLinked exit %s in second room with this room." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "", reversedDirection)
 				else:
 					return "Linking direction %s to %s with name '%s'.\nUnable to link exit %s in second room with this room: exit already defined." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "", reversedDirection)
@@ -508,7 +591,7 @@ class World(object):
 		if not args or not args[0]:
 			match = None
 		else:
-			match = re.match(r"^(?P<action>add|delete|info)(?:\s+(?P<label>\S+))?(?:\s+(?P<vnum>\d+))?$", args[0].strip())
+			match = re.match(r"^(?P<action>add|delete|info)(?:\s+(?P<label>\S+))?(?:\s+(?P<vnum>\d+))?$", args[0].strip().lower())
 		if not match:
 			self.output("Syntax: 'rlabel [add|info|delete] [label] [vnum]'. Vnum is only used when adding a room. Leave it blank to use the current room's vnum. Use '_label info all' to get a list of all labels.")
 			return None
@@ -549,7 +632,7 @@ class World(object):
 		if not args or not args[0]:
 			vnum = self.currentRoom.vnum
 		else:
-			vnum = args[0].strip()
+			vnum = args[0].strip().lower()
 		if vnum in self.labels:
 			vnum = self.labels[vnum]
 		if vnum in self.rooms:
@@ -612,7 +695,7 @@ class World(object):
 		# Process any remaining items in the directions buffer.
 		if directionsBuffer:
 			result.extend(compressDirections(directionsBuffer))
-		return "; ".join(result)
+		return ", ".join(result)
 
 	def pathFind(self, origin=None, destination=None, flags=[]):
 		"""Find the path"""

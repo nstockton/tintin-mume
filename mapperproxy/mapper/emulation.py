@@ -2,27 +2,27 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import print_function
+
 import codecs
 import json
 import os.path
 import re
-import subprocess
-import textwrap
+import threading
 
 from .world import World
+from .config import Config, config_lock
 from .constants import DIRECTIONS, RUN_DESTINATION_REGEX, TERRAIN_SYMBOLS
-from .terminalsize import get_terminal_size
-from .utils import iterItems, getDirectoryPath
-
+from .utils import page, iterItems, getDirectoryPath
 
 class EmulatedWorld(World):
 	"""The main emulated world class"""
-	width, height = get_terminal_size()
+	def __init__(self, use_gui):
 
-	def __init__(self, **kwargs):
-		print("Loading the world database.")
-		World.__init__(self)
-		print("Loaded {0} rooms.".format(len(self.rooms)))
+		self.output("Welcome to Mume Map Emulation!")
+		self.output("Loading the world database.")
+		World.__init__(self, use_gui=use_gui)
+		self.output("Loaded {0} rooms.".format(len(self.rooms)))
 		self.config = {}
 		dataDirectory = getDirectoryPath("data")
 		self.configFile = os.path.join(dataDirectory, "emulation_config.json")
@@ -35,18 +35,8 @@ class EmulatedWorld(World):
 		self.move(lastVnum)
 
 	def output(self, text):
-		"""Use less to display text if the number of lines exceeds the terminal height or the print function if not."""
-		# Word wrapping to 1 less than the terminal width is necessary to prevent occasional blank lines in the terminal output.
-		lines = [textwrap.fill(line.strip(), self.width - 1) for line in text.splitlines() if line.strip()]
-		text = "\n".join(lines)
-		if len(lines) < self.height:
-			print(text)
-		else:
-			less = subprocess.Popen("less", stdin=subprocess.PIPE)
-			less.stdin.write(text.encode("utf-8"))
-			less.stdin.close()
-			less.wait()
-		return None
+		"""Output text with utils.page."""
+		page(line for line in text.splitlines() if line.strip())
 
 	def look(self):
 		"""The 'look' command"""
@@ -219,30 +209,56 @@ class EmulatedWorld(World):
 			self.output("Arglebargle, glop-glyf!?!")
 
 
-def main():
-	print("Welcome to Mume Map Emulation!")
-	wld = EmulatedWorld()
-	while True:
-		prompt = "> "
-		# Indicate the current room's terrain in the prompt.
-		if not wld.config.get("use_terrain_symbols"):
-			prompt = wld.currentRoom.terrain + prompt
-		else:
-			for symbol, terrain in iterItems(TERRAIN_SYMBOLS):
-				if terrain == wld.currentRoom.terrain:
-					prompt = symbol + prompt
-					break
-		# For Python 2/3 compatibility:
+class Emulator(threading.Thread):
+	def __init__(self, use_gui):
+		threading.Thread.__init__(self)
+		self.name = "Emulator"
+		self.world = EmulatedWorld(use_gui)
+		self._use_gui = use_gui
+
+	def run(self):
+		wld = self.world
+		while True:
+			prompt = "> "
+			# Indicate the current room's terrain in the prompt.
+			if not wld.config.get("use_terrain_symbols"):
+				prompt = wld.currentRoom.terrain + prompt
+			else:
+				for symbol, terrain in iterItems(TERRAIN_SYMBOLS):
+					if terrain == wld.currentRoom.terrain:
+						prompt = symbol + prompt
+						break
+			# For Python 2/3 compatibility:
+			try:
+				userInput = raw_input(prompt).strip().lower()
+			except NameError:
+				userInput = input(prompt).strip().lower()
+			if not userInput:
+				continue
+			elif "quit".startswith(userInput):
+				break
+			else:
+				wld.parseInput(userInput)
+		# The user has typed 'q[uit]'. Save the config file and exit.
+		wld.saveConfig()
+		wld.output("Good bye.")
+		if not self._use_gui:
+			return
+		with wld._gui_queue_lock:
+			wld._gui_queue.put(None)
+
+
+def main(use_gui=None):
+	if use_gui is None:
+		from . import use_gui
+	if use_gui:
 		try:
-			userInput = raw_input(prompt).strip().lower()
-		except NameError:
-			userInput = input(prompt).strip().lower()
-		if not userInput:
-			continue
-		elif "quit".startswith(userInput):
-			break
-		else:
-			wld.parseInput(userInput)
-	# The user has typed 'q[uit]'. Save the config file and exit.
-	wld.saveConfig()
-	print("Good bye.")
+			import pyglet
+		except ImportError:
+			print("Unable to find pyglet. Disabling gui")
+			use_gui = False
+	emulator_thread=Emulator(use_gui)
+	emulator_thread.start()
+	if use_gui:
+		pyglet.app.run()
+	emulator_thread.join()

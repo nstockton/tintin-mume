@@ -8,7 +8,7 @@ import py2exe
 
 APP_NAME = "Mapper Proxy"
 APP_AUTHOR = "Nick Stockton"
-APP_VERSION = "1.5"
+APP_VERSION = "2.0_beta"
 USE_CUSTOM_PYTHON_DLL = False
 PYTHON_DLL = "python34.dll"
 

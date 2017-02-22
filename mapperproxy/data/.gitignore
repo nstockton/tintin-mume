@@ -3,4 +3,5 @@
 # Except this file
 !room_labels.json.sample
 !emulation_config.json.sample
+!config.json.sample
 !.gitignore
