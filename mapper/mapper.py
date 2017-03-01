@@ -375,7 +375,7 @@ class Mapper(threading.Thread, World):
 		self.clientSend("Adding room '%s' with vnum '%s'" % (newRoom.name, vnum))
 
 	def run(self):
-		addedNewRoom = False
+		addedNewRoomFrom = None
 		scouting = False
 		movement = None
 		prompt = ""
@@ -423,7 +423,9 @@ class Mapper(threading.Thread, World):
 				description = data
 			elif event == "dynamic":
 				dynamic = data
-				if self.autoMapping and self.isSynced:
+				if not self.isSynced or movement is None:
+					continue
+				elif self.autoMapping:
 					if movement in DIRECTIONS and (movement not in self.currentRoom.exits or self.currentRoom.exits[movement].to not in self.rooms):
 						# Player has moved in a direction that either doesn't exist in the database or links to an invalid vnum (E.G. undefined).
 						if self.autoMerging and name and description:
@@ -440,50 +442,49 @@ class Mapper(threading.Thread, World):
 						else:
 							# Create new room.
 							self.addNewRoom(movement, name, description, dynamic)
-							addedNewRoom = True
+							addedNewRoomFrom = self.currentRoom.vnum
+				if not movement:
+					# The player was forcibly moved in an unknown direction.
+					self.isSynced = False
+					self.clientSend("Forced movement, no longer synced.")
+				elif movement not in DIRECTIONS:
+					self.isSynced = False
+					self.clientSend("Error: Invalid direction '{0}'. Map no longer synced!".format(movement))
+				elif movement not in self.currentRoom.exits:
+					self.isSynced = False
+					self.clientSend("Error: direction '{0}' not in database. Map no longer synced!".format(movement))
+				elif self.currentRoom.exits[movement].to not in self.rooms:
+					self.isSynced = False
+					self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(self.currentRoom.exits[movement].to, movement))
+				else:
+					self.currentRoom = self.rooms[self.currentRoom.exits[movement].to]
+					if self.autoMapping and self.autoUpdating:
+						if name and self.currentRoom.name != name:
+							self.currentRoom.name = name
+							self.clientSend("Updating room name.")
+						if description and self.currentRoom.desc != description:
+							self.currentRoom.desc = description
+							self.clientSend("Updating room description.")
+						if dynamic and self.currentRoom.dynamicDesc != dynamic:
+							self.currentRoom.dynamicDesc = dynamic
+							self.clientSend("Updating room dynamic description.")
+				if self.autoWalkDirections:
+					# The player is auto-walking. Send the next direction to Mume.
+					self.walkNextDirection()
 			elif event == "exits":
 				exits = data
-				if addedNewRoom and REVERSE_DIRECTIONS[movement] in exits:
-					newRoom = self.rooms[self.currentRoom.exits[movement].to]
-					newRoom.exits[REVERSE_DIRECTIONS[movement]] = self.getNewExit(REVERSE_DIRECTIONS[movement], self.currentRoom.vnum)
-				addedNewRoom = False
+				if self.autoMapping and self.isSynced and movement is not None:
+					if addedNewRoomFrom and REVERSE_DIRECTIONS[movement] in exits:
+						self.currentRoom.exits[REVERSE_DIRECTIONS[movement]] = self.getNewExit(REVERSE_DIRECTIONS[movement], addedNewRoomFrom)
+					self.updateExitFlags(exits)
+				addedNewRoomFrom = None
 			elif event == "prompt":
 				prompt = data
-				if movement is not None and self.isSynced:
-					if not movement:
-						# The player was forcibly moved in an unknown direction.
-						self.isSynced = False
-						self.clientSend("Forced movement, no longer synced.")
-					elif movement not in DIRECTIONS:
-						self.isSynced = False
-						self.clientSend("Error: Invalid direction '{0}'. Map no longer synced!".format(movement))
-					elif movement not in self.currentRoom.exits:
-						self.isSynced = False
-						self.clientSend("Error: direction '{0}' not in database. Map no longer synced!".format(movement))
-					elif self.currentRoom.exits[movement].to not in self.rooms:
-						self.isSynced = False
-						self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(self.currentRoom.exits[movement].to, movement))
-					else:
-						self.currentRoom = self.rooms[self.currentRoom.exits[movement].to]
-						if self.autoMapping:
-							if self.autoUpdating and name and self.currentRoom.name != name:
-								self.currentRoom.name = name
-								self.clientSend("Updating room name.")
-							if self.autoUpdating and description and self.currentRoom.desc != description:
-								self.currentRoom.desc = description
-								self.clientSend("Updating room description.")
-							if self.autoUpdating and dynamic and self.currentRoom.dynamicDesc != dynamic:
-								self.currentRoom.dynamicDesc = dynamic
-								self.clientSend("Updating room dynamic description.")
-							self.updateExitFlags(exits)
-							self.updateRoomFlags(prompt)
-					if self.autoWalkDirections:
-						# The player is auto-walking. Send the next direction to Mume.
-						self.walkNextDirection()
-				if name:
-					if self.isSynced or self.sync(name):
-						self.roomDetails()
-				addedNewRoom = False
+				if self.autoMapping and self.isSynced and movement is not None:
+					self.updateRoomFlags(prompt)
+				if name and (self.isSynced or self.sync(name)):
+					self.roomDetails()
+				addedNewRoomFrom = None
 				scouting = False
 				movement = None
 				prompt = ""
