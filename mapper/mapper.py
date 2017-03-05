@@ -378,6 +378,7 @@ class Mapper(threading.Thread, World):
 		addedNewRoomFrom = None
 		scouting = False
 		movement = None
+		moved = None
 		prompt = ""
 		name = ""
 		description = ""
@@ -397,7 +398,7 @@ class Mapper(threading.Thread, World):
 				continue
 			# The data was from the mud server.
 			event, data = data
-			data = ANSI_COLOR_REGEX.sub("", simplified(decodeBytes(multiReplace(data, XML_UNESCAPE_PATTERNS))))
+			data = ANSI_COLOR_REGEX.sub("", decodeBytes(multiReplace(data, XML_UNESCAPE_PATTERNS)))
 			if event == "movement":
 				movement = data
 				scouting = False
@@ -418,9 +419,9 @@ class Mapper(threading.Thread, World):
 					elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
 						self.clientSend(self.rridable("ridable"))
 			elif event == "name":
-				name = data if data not in ("You just see a dense fog around you...", "It is pitch black...") else ""
+				name = simplified(data) if data not in ("You just see a dense fog around you...", "It is pitch black...") else ""
 			elif event == "description":
-				description = data
+				description = simplified(data)
 			elif event == "dynamic":
 				dynamic = data
 				if not self.isSynced or movement is None:
@@ -458,7 +459,16 @@ class Mapper(threading.Thread, World):
 					self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(self.currentRoom.exits[movement].to, movement))
 				else:
 					self.currentRoom = self.rooms[self.currentRoom.exits[movement].to]
-					if self.autoMapping and self.autoUpdating:
+					if moved is None:
+						moved = movement
+					else:
+						# Multiple name / description / dynamic events have been received after the movement event and before the prompt.
+						moved = None
+					movement = None
+					exits = ""
+					if moved is None:
+						continue
+					elif self.autoMapping and self.autoUpdating:
 						if name and self.currentRoom.name != name:
 							self.currentRoom.name = name
 							self.clientSend("Updating room name.")
@@ -473,20 +483,20 @@ class Mapper(threading.Thread, World):
 					self.walkNextDirection()
 			elif event == "exits":
 				exits = data
-				if self.autoMapping and self.isSynced and movement is not None:
-					if addedNewRoomFrom and REVERSE_DIRECTIONS[movement] in exits:
-						self.currentRoom.exits[REVERSE_DIRECTIONS[movement]] = self.getNewExit(REVERSE_DIRECTIONS[movement], addedNewRoomFrom)
-					self.updateExitFlags(exits)
-				addedNewRoomFrom = None
 			elif event == "prompt":
 				prompt = data
-				if self.autoMapping and self.isSynced and movement is not None:
+				if self.autoMapping and self.isSynced and moved is not None:
+					if exits:
+						if addedNewRoomFrom and REVERSE_DIRECTIONS[moved] in exits:
+							self.currentRoom.exits[REVERSE_DIRECTIONS[moved]] = self.getNewExit(REVERSE_DIRECTIONS[moved], addedNewRoomFrom)
+						self.updateExitFlags(exits)
 					self.updateRoomFlags(prompt)
 				if name and (self.isSynced or self.sync(name)):
 					self.roomDetails()
 				addedNewRoomFrom = None
 				scouting = False
 				movement = None
+				moved = None
 				prompt = ""
 				name = ""
 				description = ""
