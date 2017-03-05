@@ -701,8 +701,8 @@ class World(object):
 		"""Find the path"""
 		if not origin:
 			origin = self.currentRoom
-		if destination in self.labels:
-			destination = self.labels[destination]
+		if destination and destination.strip().lower() in self.labels:
+			destination = self.labels[destination.strip().lower()]
 		if destination and destination in self.rooms:
 			destination = self.rooms[destination]
 		if not origin or not destination:

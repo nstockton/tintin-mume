@@ -8,7 +8,7 @@ import py2exe
 
 APP_NAME = "Mapper Proxy"
 APP_AUTHOR = "Nick Stockton"
-APP_VERSION = "2.0_beta"
+APP_VERSION = "2.0"
 USE_CUSTOM_PYTHON_DLL = False
 PYTHON_DLL = "python34.dll"
 
@@ -31,7 +31,7 @@ class Target(object):
 		self.copyright = APP_AUTHOR
 		self.name = APP_NAME
 
-program = Target(description="%s V%s" % (APP_NAME, APP_VERSION), script="startmapper.py", dest_base=APP_NAME)
+program = Target(description="%s V%s" % (APP_NAME, APP_VERSION), script="start.py", dest_base=APP_NAME)
 
 excludes = [
 	"_ssl",
