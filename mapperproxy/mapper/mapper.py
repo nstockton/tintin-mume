@@ -379,11 +379,11 @@ class Mapper(threading.Thread, World):
 		scouting = False
 		movement = None
 		moved = None
-		prompt = ""
-		name = ""
-		description = ""
-		dynamic = ""
-		exits = ""
+		prompt = None
+		name = None
+		description = None
+		dynamic = None
+		exits = None
 		queue = self.queue
 		while True:
 			dataType, data = queue.get()
@@ -399,10 +399,32 @@ class Mapper(threading.Thread, World):
 			# The data was from the mud server.
 			event, data = data
 			data = ANSI_COLOR_REGEX.sub("", decodeBytes(multiReplace(data, XML_UNESCAPE_PATTERNS)))
-			if event == "movement":
+			if event == "iac_ga":
+				if self.isSynced:
+					if self.autoMapping and moved:
+						self.updateRoomFlags(prompt)
+				elif name:
+					self.sync(name)
+				if self.isSynced and dynamic is not None:
+					self.roomDetails()
+					if self.autoWalkDirections and moved:
+						# The player is auto-walking. Send the next direction to Mume.
+						self.walkNextDirection()
+				addedNewRoomFrom = None
+				scouting = False
+				movement = None
+				moved = None
+				prompt = None
+				name = None
+				description = None
+				dynamic = None
+				exits = None
+			elif event == "prompt":
+				prompt = data
+			elif event == "movement":
 				movement = data
 				scouting = False
-			elif scouting and event != "prompt":
+			elif scouting:
 				# Ignore room data received by scouting.
 				continue
 			elif event == "misc":
@@ -424,6 +446,9 @@ class Mapper(threading.Thread, World):
 				description = simplified(data)
 			elif event == "dynamic":
 				dynamic = data
+				moved = None
+				addedNewRoomFrom = None
+				exits = None
 				if not self.isSynced or movement is None:
 					continue
 				elif self.autoMapping:
@@ -444,7 +469,7 @@ class Mapper(threading.Thread, World):
 							# Create new room.
 							self.addNewRoom(movement, name, description, dynamic)
 							addedNewRoomFrom = self.currentRoom.vnum
-				if not movement:
+				elif not movement:
 					# The player was forcibly moved in an unknown direction.
 					self.isSynced = False
 					self.clientSend("Forced movement, no longer synced.")
@@ -459,16 +484,9 @@ class Mapper(threading.Thread, World):
 					self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(self.currentRoom.exits[movement].to, movement))
 				else:
 					self.currentRoom = self.rooms[self.currentRoom.exits[movement].to]
-					if moved is None:
-						moved = movement
-					else:
-						# Multiple name / description / dynamic events have been received after the movement event and before the prompt.
-						moved = None
+					moved = movement
 					movement = None
-					exits = ""
-					if moved is None:
-						continue
-					elif self.autoMapping and self.autoUpdating:
+					if self.autoMapping and self.autoUpdating:
 						if name and self.currentRoom.name != name:
 							self.currentRoom.name = name
 							self.clientSend("Updating room name.")
@@ -478,29 +496,12 @@ class Mapper(threading.Thread, World):
 						if dynamic and self.currentRoom.dynamicDesc != dynamic:
 							self.currentRoom.dynamicDesc = dynamic
 							self.clientSend("Updating room dynamic description.")
-				if self.autoWalkDirections:
-					# The player is auto-walking. Send the next direction to Mume.
-					self.walkNextDirection()
 			elif event == "exits":
 				exits = data
-			elif event == "prompt":
-				prompt = data
-				if self.autoMapping and self.isSynced and moved is not None:
-					if exits:
-						if addedNewRoomFrom and REVERSE_DIRECTIONS[moved] in exits:
-							self.currentRoom.exits[REVERSE_DIRECTIONS[moved]] = self.getNewExit(REVERSE_DIRECTIONS[moved], addedNewRoomFrom)
-						self.updateExitFlags(exits)
-					self.updateRoomFlags(prompt)
-				if name and (self.isSynced or self.sync(name)):
-					self.roomDetails()
+				if self.autoMapping and self.isSynced and moved:
+					if addedNewRoomFrom and REVERSE_DIRECTIONS[moved] in exits:
+						self.currentRoom.exits[REVERSE_DIRECTIONS[moved]] = self.getNewExit(REVERSE_DIRECTIONS[moved], addedNewRoomFrom)
+					self.updateExitFlags(exits)
 				addedNewRoomFrom = None
-				scouting = False
-				movement = None
-				moved = None
-				prompt = ""
-				name = ""
-				description = ""
-				dynamic = ""
-				exits = ""
 		# end while, mapper thread ending.
 		self.clientSend("Exiting mapper thread.")
