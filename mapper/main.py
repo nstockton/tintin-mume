@@ -5,7 +5,7 @@
 from __future__ import print_function
 
 import socket
-from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, TTYPE, NAWS
+from telnetlib import IAC, GA, DONT, DO, WONT, WILL, theNULL, SB, SE, TTYPE, NAWS
 import threading
 
 from .config import Config, config_lock
@@ -71,6 +71,7 @@ class Server(threading.Thread):
 		ignoreBytes = frozenset([ord(theNULL), 0x11])
 		negotiationBytes = frozenset(ord(byte) for byte in [DONT, DO, WONT, WILL])
 		ordIAC = ord(IAC)
+		ordGA = ord(GA)
 		ordSB = ord(SB)
 		ordSE = ord(SE)
 		ordLF = ord("\n")
@@ -158,6 +159,10 @@ class Server(threading.Thread):
 							del clientBuffer[-2:]
 						else:
 							textBuffer.append(byte)
+					elif byte == ordGA:
+						del clientBuffer[-2:]
+						clientBuffer.extend(b"\r\n")
+						self._mapper.queue.put((MUD_DATA, ("iac_ga", b"")))
 				elif byte == ordIAC:
 					clientBuffer.append(byte)
 					inIAC = True
