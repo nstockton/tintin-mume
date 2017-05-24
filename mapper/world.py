@@ -307,6 +307,36 @@ class World(object):
 	def getNewVnum(self):
 		return str(max(int(i) for i in self.rooms) + 1)
 
+	def revnum(self, *args):
+		if not args or not args[0]:
+			match = None
+		else:
+			match = re.match(r"^(?:(?P<origin>\d+)\s+)?(?:\s*(?P<destination>\d+)\s*)$", args[0].strip().lower())
+		if not match:
+			self.output("Syntax: 'revnum [Origin VNum] [Destination VNum]'.")
+			return None
+		else:
+			matchDict = match.groupdict()
+		if not matchDict["destination"]:
+			self.output("Error: you need to supply a destination VNum.")
+			return None
+		destination = matchDict["destination"]
+		if not matchDict["origin"]:
+			origin = self.currentRoom.vnum
+			self.output("Changing the VNum of the current room to '{}'.".format(destination))
+		else:
+			origin = matchDict["origin"]
+			self.output("Changing the Vnum '{}' to '{}'.".format(origin, destination))
+		for roomVnum, roomObj in iterItems(self.rooms):
+			for direction, exitObj in iterItems(roomObj.exits):
+				if roomVnum == origin:
+					exitObj.vnum = destination
+				if exitObj.to == origin:
+					self.rooms[roomVnum].exits[direction].to = destination
+		self.rooms[origin].vnum = destination
+		self.rooms[destination] = self.rooms[origin]
+		del self.rooms[origin]
+
 	def rdelete(self, *args):
 		if args and args[0] is not None and args[0].strip().isdigit():
 			if args[0].strip() in self.rooms:
