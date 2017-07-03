@@ -57,6 +57,9 @@ class Room(object):
 		if self.ridable == "notridable":
 			self.cost += 5.0
 
+	def manhattanDistance(self, destination):
+		return abs(destination.x - self.x) + abs(destination.y - self.y) + abs(destination.z - self.z)
+
 
 class Exit(object):
 	def __init__(self):
@@ -382,8 +385,38 @@ class World(object):
 					elif key in ("to", "door") and getattr(exitObj, key, "").strip().lower() == value:
 						keysMatched += 1
 			if len(kwArgs) == keysMatched:
-				results.append((vnum, roomObj))
+				results.append(roomObj)
 		return results
+
+	def fdoor(self, *args):
+		if not args or args[0] is None or not args[0].strip():
+			return "Usage: 'fdoor [text]'."
+		results = self.searchRooms(door=args[0])
+		if not results:
+			return "Nothing found."
+		currentRoom = self.currentRoom
+		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
+		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in results[:20])
+
+	def fname(self, *args):
+		if not args or args[0] is None or not args[0].strip():
+			return "Usage: 'fname [text]'."
+		results = self.searchRooms(name=args[0])
+		if not results:
+			return "Nothing found."
+		currentRoom = self.currentRoom
+		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
+		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in results[:20])
+
+	def fnote(self, *args):
+		if not args or args[0] is None or not args[0].strip():
+			return "Usage: 'fnote [text]'."
+		results = self.searchRooms(note=args[0])
+		if not results:
+			return "Nothing found."
+		currentRoom = self.currentRoom
+		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
+		return "\n".join("{vnum}, {name}, {note}".format(**vars(roomObj)) for roomObj in results[:20])
 
 	def rnote(self, *args):
 		if not args or args[0] is None or not args[0].strip():
