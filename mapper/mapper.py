@@ -95,6 +95,15 @@ class Mapper(threading.Thread, World):
 	def user_command_rdelete(self, *args):
 		self.clientSend(self.rdelete(*args))
 
+	def user_command_fdoor(self, *args):
+		self.clientSend(self.fdoor(*args))
+
+	def user_command_fname(self, *args):
+		self.clientSend(self.fname(*args))
+
+	def user_command_fnote(self, *args):
+		self.clientSend(self.fnote(*args))
+
 	def user_command_rnote(self, *args):
 		self.clientSend(self.rnote(*args))
 
