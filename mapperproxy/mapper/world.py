@@ -654,7 +654,7 @@ class World(object):
 		if not args or not args[0]:
 			match = None
 		else:
-			match = re.match(r"^(?P<action>add|delete|info)(?:\s+(?P<label>\S+))?(?:\s+(?P<vnum>\d+))?$", args[0].strip().lower())
+			match = re.match(r"^(?P<action>add|delete|info|search)(?:\s+(?P<label>\S+))?(?:\s+(?P<vnum>\d+))?$", args[0].strip().lower())
 		if not match:
 			self.output("Syntax: 'rlabel [add|info|delete] [label] [vnum]'. Vnum is only used when adding a room. Leave it blank to use the current room's vnum. Use '_label info all' to get a list of all labels.")
 			return None
@@ -690,6 +690,12 @@ class World(object):
 				self.output("There aren't any labels matching '{0}' in the database.".format(label))
 			else:
 				self.output("Label '{0}' points to room '{1}'.".format(label, self.labels[label]))
+		elif matchDict["action"] == "search":
+			results = sorted("{} - {} - {}".format(name, self.rooms[vnum].name if vnum in self.rooms else "VNum not in map", vnum) for name, vnum in iterItems(self.labels) if label in name)
+			if not results:
+				self.output("Nothing found.")
+			else:
+				self.output("\n".join(results))
 
 	def rinfo(self, *args):
 		if not args or not args[0]:
