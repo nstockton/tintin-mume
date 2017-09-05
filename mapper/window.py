@@ -611,9 +611,12 @@ class Window(pyglet.window.Window):
 						vs1 = self.equilateral_triangle(new_cp, (self.size / 4.0) + 14, angle)
 						vs2 = self.equilateral_triangle(new_cp, self.size / 4.0, angle)
 						if name in self.visible_exits:
-							vl1, vl2 = self.visible_exits[name]
-							vl1.vertices = self.corners_2_vertices(vs1)
-							vl2.vertices = self.corners_2_vertices(vs2)
+							try:
+								vl1, vl2 = self.visible_exits[name]
+								vl1.vertices = self.corners_2_vertices(vs1)
+								vl2.vertices = self.corners_2_vertices(vs2)
+							except TypeError:
+								pass
 						else:
 							vl1 = self.draw_polygon(vs1, exit_color2, group=self.groups[4])
 							vl2 = self.draw_polygon(vs2, exit_color1, group=self.groups[4])
@@ -678,9 +681,12 @@ class Window(pyglet.window.Window):
 							a = cp + (dv * _d)
 							b = a + (dv * l)
 							if name in self.visible_exits:
-								vl = self.visible_exits[name]
-								vs = self.fat_segment_vertices(a, b, self.size / radius)
-								vl.vertices = vs
+								try:
+									vl = self.visible_exits[name]
+									vs = self.fat_segment_vertices(a, b, self.size / radius)
+									vl.vertices = vs
+								except AttributeError:
+									pass
 							else:
 								self.visible_exits[name] = self.draw_fat_segment(a, b, self.size / radius, exit_color1, group=self.groups[4])
 						elif exit.to in ("undefined", "death"):
@@ -700,12 +706,15 @@ class Window(pyglet.window.Window):
 							d = a + (dv * l)
 							r = ((self.size / radius) / 2.0) * self.spacer_as_float
 							if name in self.visible_exits:
-								vl1, vl2 = self.visible_exits[name]
-								vs1, vs2 = self.arrow_vertices(a, d, r)
-								vl1.vertices = vs1
-								vl1.colors = color * (len(vl1.colors) // 4)
-								vl2.vertices = vs2
-								vl2.colors = color * (len(vl2.colors) // 4)
+								try:
+									vl1, vl2 = self.visible_exits[name]
+									vs1, vs2 = self.arrow_vertices(a, d, r)
+									vl1.vertices = vs1
+									vl1.colors = color * (len(vl1.colors) // 4)
+									vl2.vertices = vs2
+									vl2.colors = color * (len(vl2.colors) // 4)
+								except TypeError:
+									pass
 							else:
 								self.visible_exits[name] = self.draw_arrow(a, d, r, color, group=self.groups[4])
 				newexits.add(name)
