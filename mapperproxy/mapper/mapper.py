@@ -361,13 +361,13 @@ class Mapper(threading.Thread, World):
 		if output:
 			return self.clientSend("\n".join(output))
 
-	def autoMergeRoom(self, movement, vnum, roomObj):
+	def autoMergeRoom(self, movement, roomObj):
 		output = []
 		if self.autoLinking and REVERSE_DIRECTIONS[movement] in roomObj.exits and roomObj.exits[REVERSE_DIRECTIONS[movement]].to == "undefined":
-			output.append(self.rlink("add %s %s" % (vnum, movement)))
+			output.append(self.rlink("add %s %s" % (roomObj.vnum, movement)))
 		else:
-			output.append(self.rlink("add oneway %s %s" % (vnum, movement)))
-		output.append("Auto Merging '%s' with name '%s'." % (vnum, roomObj.name))
+			output.append(self.rlink("add oneway %s %s" % (roomObj.vnum, movement)))
+		output.append("Auto Merging '%s' with name '%s'." % (roomObj.vnum, roomObj.name))
 		return self.clientSend("\n".join(output))
 
 	def addNewRoom(self, movement, name, description, dynamic):
@@ -460,8 +460,21 @@ class Mapper(threading.Thread, World):
 				exits = None
 				if not self.isSynced or movement is None:
 					continue
-				elif self.autoMapping:
-					if movement in DIRECTIONS and (movement not in self.currentRoom.exits or self.currentRoom.exits[movement].to not in self.rooms):
+				elif not movement:
+					# The player was forcibly moved in an unknown direction.
+					self.isSynced = False
+					self.clientSend("Forced movement, no longer synced.")
+				elif movement not in DIRECTIONS:
+					self.isSynced = False
+					self.clientSend("Error: Invalid direction '{0}'. Map no longer synced!".format(movement))
+				elif not self.autoMapping and movement not in self.currentRoom.exits:
+					self.isSynced = False
+					self.clientSend("Error: direction '{0}' not in database. Map no longer synced!".format(movement))
+				elif not self.autoMapping and self.currentRoom.exits[movement].to not in self.rooms:
+					self.isSynced = False
+					self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(self.currentRoom.exits[movement].to, movement))
+				else:
+					if self.autoMapping and movement in DIRECTIONS and (movement not in self.currentRoom.exits or self.currentRoom.exits[movement].to not in self.rooms):
 						# Player has moved in a direction that either doesn't exist in the database or links to an invalid vnum (E.G. undefined).
 						if self.autoMerging and name and description:
 							duplicateRooms = self.searchRooms(exactMatch=True, name=name, desc=description)
@@ -472,26 +485,11 @@ class Mapper(threading.Thread, World):
 						elif not description:
 							self.clientSend("Unable to add new room: empty room description.")
 						elif duplicateRooms and len(duplicateRooms) == 1:
-							vnum, roomObj = duplicateRooms[0]
-							self.autoMergeRoom(movement, vnum, roomObj)
+							self.autoMergeRoom(movement, duplicateRooms[0])
 						else:
 							# Create new room.
-							self.addNewRoom(movement, name, description, dynamic)
 							addedNewRoomFrom = self.currentRoom.vnum
-				elif not movement:
-					# The player was forcibly moved in an unknown direction.
-					self.isSynced = False
-					self.clientSend("Forced movement, no longer synced.")
-				elif movement not in DIRECTIONS:
-					self.isSynced = False
-					self.clientSend("Error: Invalid direction '{0}'. Map no longer synced!".format(movement))
-				elif movement not in self.currentRoom.exits:
-					self.isSynced = False
-					self.clientSend("Error: direction '{0}' not in database. Map no longer synced!".format(movement))
-				elif self.currentRoom.exits[movement].to not in self.rooms:
-					self.isSynced = False
-					self.clientSend("Error: vnum ({0}) in direction ({1}) is not in the database. Map no longer synced!".format(self.currentRoom.exits[movement].to, movement))
-				else:
+							self.addNewRoom(movement, name, description, dynamic)
 					self.currentRoom = self.rooms[self.currentRoom.exits[movement].to]
 					moved = movement
 					movement = None
@@ -509,7 +507,7 @@ class Mapper(threading.Thread, World):
 				exits = data
 				if self.autoMapping and self.isSynced and moved:
 					if addedNewRoomFrom and REVERSE_DIRECTIONS[moved] in exits:
-						self.currentRoom.exits[REVERSE_DIRECTIONS[moved]] = self.getNewExit(REVERSE_DIRECTIONS[moved], addedNewRoomFrom)
+						self.currentRoom.exits[REVERSE_DIRECTIONS[moved]] = self.getNewExit(direction=REVERSE_DIRECTIONS[moved], to=addedNewRoomFrom)
 					self.updateExitFlags(exits)
 				addedNewRoomFrom = None
 		# end while, mapper thread ending.
