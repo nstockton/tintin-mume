@@ -32,6 +32,7 @@ class Mapper(threading.Thread, World):
 		self.autoUpdating = False
 		self.autoMerging = True
 		self.autoLinking = True
+		self.autoWalk = False
 		self.autoWalkDirections = []
 		self.lastPathFindQuery = ""
 		World.__init__(self, use_gui=use_gui)
@@ -156,7 +157,7 @@ class Mapper(threading.Thread, World):
 		self.clientSend("\n".join(self.rinfo(*args)))
 
 	def user_command_vnum(self, *args):
-		self.clientSend(self.currentRoom.vnum)
+		self.clientSend("Vnum: %s." % self.currentRoom.vnum)
 
 	def user_command_tvnum(self, *args):
 		if not args or not args[0] or not args[0].strip():
@@ -168,6 +169,9 @@ class Mapper(threading.Thread, World):
 		result = self.rlabel(*args)
 		if result:
 			self.clientSend("\r\n".join(result))
+
+	def user_command_getlabel(self, *args):
+		self.getlabel(*args)
 
 	def user_command_savemap(self, *args):
 		self.saveRooms()
@@ -204,10 +208,29 @@ class Mapper(threading.Thread, World):
 		result = self.pathFind(destination=destination, flags=flags)
 		if result is not None:
 			self.autoWalkDirections = result
+			self.autoWalk = True
 			if result:
 				if argString != "c":
 					self.lastPathFindQuery = argString
 				self.walkNextDirection()
+
+	def user_command_step(self, *args):
+		if not args or not args[0] or not args[0].strip():
+			return self.clientSend("Usage: step [label|vnum]")
+		argString = args[0].strip()
+		match = RUN_DESTINATION_REGEX.match(argString)
+		destination = match.group("destination")
+		flags = match.group("flags")
+		if flags:
+			flags = flags.split("|")
+		else:
+			flags = None
+		result = self.pathFind(destination=destination, flags=flags)
+		if result is not None:
+			self.autoWalkDirections = result
+			self.walkNextDirection()
+		else:
+			self.clientSend("Specify a path to follow.")
 
 	def user_command_stop(self, *args):
 		self.clientSend(self.stopRun())
@@ -242,6 +265,7 @@ class Mapper(threading.Thread, World):
 			command = self.autoWalkDirections.pop()
 			if not self.autoWalkDirections:
 				self.clientSend("Arriving at destination.")
+				self.autoWalk = False
 			if command in DIRECTIONS:
 				# Send the first character of the direction to Mume.
 				self.serverSend(command[0])
@@ -251,6 +275,7 @@ class Mapper(threading.Thread, World):
 				self.serverSend(command)
 
 	def stopRun(self):
+		self.autoWalk = False
 		self.autoWalkDirections = []
 		return "Run canceled!"
 
@@ -416,7 +441,7 @@ class Mapper(threading.Thread, World):
 					self.sync(name)
 				if self.isSynced and dynamic is not None:
 					self.roomDetails()
-					if self.autoWalkDirections and moved:
+					if self.autoWalkDirections and moved and self.autoWalk:
 						# The player is auto-walking. Send the next direction to Mume.
 						self.walkNextDirection()
 				addedNewRoomFrom = None

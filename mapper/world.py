@@ -650,6 +650,17 @@ class World(object):
 			del self.currentRoom.exits[direction]
 			return "Exit %s removed." % direction
 
+	def getlabel(self, *args):
+		if not args or not args[0] or not args[0].strip().isdigit():
+			findVnum = self.currentRoom.vnum
+		else:
+			findVnum = args[0].strip()
+		result = ", ".join(sorted(label for label, vnum in iterItems(self.labels) if vnum == findVnum))
+		if result:
+			self.output("Room labels: {}".format(result))
+		else:
+			self.output("Room not labeled.")
+
 	def rlabel(self, *args):
 		if not args or not args[0]:
 			match = None
