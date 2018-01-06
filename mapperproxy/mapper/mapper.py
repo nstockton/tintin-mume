@@ -290,16 +290,23 @@ class Mapper(threading.Thread, World):
 			else:
 				self.clientSend("No such vnum or label: {0}.".format(vnum))
 		else:
-			vnums = []
+			nameVnums = []
+			descVnums = []
 			for vnum, roomObj in iterItems(self.rooms):
 				if roomObj.name == name:
-					vnums.append(vnum)
-			if not vnums:
+					nameVnums.append(vnum)
+				if desc and roomObj.desc == desc:
+					descVnums.append(vnum)
+			if not nameVnums:
 				self.clientSend("Current room not in the database. Unable to sync.")
-			elif len(vnums) == 1:
-				self.currentRoom = self.rooms[vnums[0]]
+			elif len(descVnums) == 1:
+				self.currentRoom = self.rooms[descVnums[0]]
 				self.isSynced = True
 				self.clientSend("Synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
+			elif len(nameVnums) == 1:
+				self.currentRoom = self.rooms[nameVnums[0]]
+				self.isSynced = True
+				self.clientSend("Name-only synced to room {0} with vnum {1}".format(self.currentRoom.name, self.currentRoom.vnum))
 			else:
 				self.clientSend("More than one room in the database matches current room. Unable to sync.")
 		return self.isSynced
@@ -438,7 +445,7 @@ class Mapper(threading.Thread, World):
 					if self.autoMapping and moved:
 						self.updateRoomFlags(prompt)
 				elif name:
-					self.sync(name)
+					self.sync(name, description)
 				if self.isSynced and dynamic is not None:
 					self.roomDetails()
 					if self.autoWalkDirections and moved and self.autoWalk:
