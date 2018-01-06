@@ -87,6 +87,7 @@ class Server(threading.Thread):
 		tagBuffer = bytearray()
 		textBuffer = bytearray()
 		readingTag = False
+		inGratuitous = False
 		modeNone = 0
 		modeRoom = 2
 		modeName = 4
@@ -124,7 +125,7 @@ class Server(threading.Thread):
 					# Identify for Mume Remote Editing.
 					self._server.sendall(b"~$#EI\n")
 					# Turn on XML mode.
-					self._server.sendall(b"~$#EX1\n3\n")
+					self._server.sendall(b"~$#EX2\n3G\n")
 					# Tell the Mume server to put IAC-GA at end of prompts.
 					self._server.sendall(b"~$#EP2\nG\n")
 					encounteredInitialOutput = True
@@ -225,6 +226,10 @@ class Server(threading.Thread):
 							elif tagBuffer.startswith(b"terrain"):
 								# Terrain tag only comes up in blindness or fog
 								xmlMode = modeTerrain
+							elif tagBuffer.startswith(b"gratuitous"):
+								inGratuitous = True
+							elif tagBuffer.startswith(b"/gratuitous"):
+								inGratuitous = False
 							elif tagBuffer.startswith(b"/room"):
 								self._mapper.queue.put((MUD_DATA, ("dynamic", bytes(textBuffer))))
 								del textBuffer[:]
@@ -265,7 +270,8 @@ class Server(threading.Thread):
 					# Byte is not part of a Telnet negotiation, MPI negotiation, or XML tag name.
 					mpiCounter = 0
 					textBuffer.append(byte)
-					clientBuffer.append(byte)
+					if not rawFormat and not inGratuitous or rawFormat:
+						clientBuffer.append(byte)
 			data = bytes(clientBuffer)
 			if not rawFormat:
 				data = multiReplace(data, XML_UNESCAPE_PATTERNS).replace(b"\r", b"").replace(b"\n\n", b"\n")

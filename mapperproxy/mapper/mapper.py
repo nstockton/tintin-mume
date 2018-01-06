@@ -467,6 +467,8 @@ class Mapper(threading.Thread, World):
 					continue
 				if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
 					self.sync(vnum="17189")
+				elif "The gravel below your feet loosens, shifting slightly.. Suddenly, you lose your balance and crash to the cave floor below." in data:
+					self.sync(vnum="15324")
 				if MOVEMENT_FORCED_REGEX.search(data) or MOVEMENT_PREVENTED_REGEX.search(data):
 					self.stopRun()
 				if self.isSynced and self.autoMapping:
