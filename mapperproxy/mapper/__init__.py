@@ -6,9 +6,9 @@ import logging
 from .config import Config, config_lock
 
 with config_lock:
-	c=Config()
+	cfg = Config()
 	try:
-		debug_level = c['debug_level']
+		debug_level = cfg["debug_level"]
 		if debug_level not in logging._levelNames:
 			if isinstance(debug_level, int):
 				if debug_level * 10 in logging._levelNames:
@@ -24,17 +24,22 @@ with config_lock:
 	except (KeyError, AttributeError):
 		debug_level = None
 	finally:
-		if 'debug_level' not in c or debug_level != c['debug_level']:
-			c['debug_level'] = debug_level
+		if "debug_level" not in cfg or debug_level != cfg["debug_level"]:
+			cfg["debug_level"] = debug_level
 			c.save()
 	try:
-		use_gui = c['use_gui']
+		use_gui = cfg["use_gui"]
+		if use_gui not in ("hc", "sighted"):
+			# Old versions of the configuration might not contain one of these current values for the use_gui setting.
+			cfg["use_gui"] = use_gui = "hc"
+			cfg.save()
 	except KeyError:
-		c['use_gui'] = use_gui = True
-		c.save()
-	del c
+		cfg["use_gui"] = use_gui = "hc"
+		cfg.save()
+	del cfg
 
 if debug_level is not None or debug_level != 0:
-	logging.basicConfig(filename='debug.log', filemode='w', level=debug_level, format='%(levelname)s: from %(name)s in %(threadName)s: "%(message)s" @ %(asctime)s.%(msecs)d', datefmt='%m/%d/%Y %H:%M:%S')
-	logging.info('Initializing')
-else: del logging
+	logging.basicConfig(filename="debug.log", filemode="w", level=debug_level, format="%(levelname)s: from %(name)s in %(threadName)s: \"%(message)s\" @ %(asctime)s.%(msecs)d", datefmt="%m/%d/%Y %H:%M:%S")
+	logging.info("Initializing")
+else:
+	del logging

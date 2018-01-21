@@ -72,7 +72,7 @@ class Exit(object):
 
 
 class World(object):
-	def __init__(self, use_gui=True):
+	def __init__(self, use_gui=None):
 		self.isSynced = False
 		self.rooms = {}
 		self.labels = {}
@@ -80,7 +80,10 @@ class World(object):
 		if use_gui:
 			self._gui_queue = Queue()
 			self._gui_queue_lock = threading.Lock()
-			from .window import Window
+			if use_gui == "hc":
+				from .hc import Window
+			elif use_gui == "sighted":
+				from .sighted import Window
 			self.window=Window(self)
 		self._currentRoom = None
 		self.loadRooms()

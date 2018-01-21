@@ -119,5 +119,5 @@
       ]
     }
   },
-  "use_gui": true
+  "use_gui": "hc"
 }

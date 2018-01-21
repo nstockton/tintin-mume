@@ -290,11 +290,13 @@ class Server(threading.Thread):
 			mpiThread.join()
 
 
-def main(outputFormat="normal", use_gui=None):
+def main(outputFormat="normal", use_gui=True):
 	outputFormat = outputFormat.strip().lower()
-	if use_gui is None:
+	if use_gui is True:
+		# The user wants to use a GUI, but didn't specify which one. Grab the preferred GUI option from the configuration.
 		from . import use_gui
 	if use_gui:
+		use_gui = use_gui.strip().lower()
 		try:
 			import pyglet
 		except ImportError:
@@ -310,6 +312,7 @@ def main(outputFormat="normal", use_gui=None):
 	serverConnection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 	try:
 		serverConnection.connect(("193.134.218.98", 443))
+
 	except TimeoutError:
 		try:
 			clientConnection.sendall(b"\r\nError: server connection timed out!\r\n")

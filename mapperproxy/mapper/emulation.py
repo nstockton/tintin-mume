@@ -242,16 +242,17 @@ class Emulator(threading.Thread):
 		# The user has typed 'q[uit]'. Save the config file and exit.
 		wld.saveConfig()
 		wld.output("Good bye.")
-		if not self._use_gui:
-			return
-		with wld._gui_queue_lock:
-			wld._gui_queue.put(None)
+		if self._use_gui:
+			with wld._gui_queue_lock:
+				wld._gui_queue.put(None)
 
 
-def main(use_gui=None):
-	if use_gui is None:
+def main(use_gui=True):
+	if use_gui is True:
+		# The user wants to use a GUI, but didn't specify which one. Grab the preferred GUI option from the configuration.
 		from . import use_gui
-	if use_gui:
+	if use_gui :
+		use_gui = use_gui.strip().lower()
 		try:
 			import pyglet
 		except ImportError:
