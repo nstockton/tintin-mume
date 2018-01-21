@@ -157,6 +157,14 @@ class Window(pyglet.window.Window):
 		self.playerRoom = currentRoom
 		self.draw_map(currentRoom)
 
+	def on_gui_refresh(self):
+		'''This event is fired when the mapper needs to signal the GUI to clear the visible rooms cache and redraw the map view.'''
+		if self.centerRoom is not None:
+			self.draw_map(self.centerRoom)
+			logger.debug('GUI refreshed.')
+		else:
+			logger.debug('Unable to refresh the GUI. The center room is not defined.')
+
 	def draw_map(self, centerRoom):
 		logger.debug("Drawing rooms around {}".format(centerRoom))
 		# reset the recorded state of the window
@@ -249,3 +257,4 @@ class Window(pyglet.window.Window):
 
 
 Window.register_event_type('on_map_sync')
+Window.register_event_type('on_gui_refresh')
