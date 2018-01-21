@@ -98,11 +98,17 @@ class World(object):
 		self._currentRoom = value
 		if self._use_gui:
 			with self._gui_queue_lock:
-				self._gui_queue.put(('on_map_sync', value))
+				self._gui_queue.put(("on_map_sync", value))
 
 	@currentRoom.deleter
 	def currentRoom(self):
 		del self._currentRoom
+
+	def GUIRefresh(self):
+		"""Trigger the clearing and redrawing of rooms by the GUI"""
+		if self._use_gui:
+			with self._gui_queue_lock:
+				self._gui_queue.put(("on_gui_refresh",))
 
 	def output(self, text):
 		print(text)
@@ -361,6 +367,7 @@ class World(object):
 				if exitObj.to == vnum:
 					self.rooms[roomVnum].exits[direction].to = "undefined"
 		del self.rooms[vnum]
+		self.GUIRefresh()
 		return output
 
 	def searchRooms(self, *args, **kwArgs):
@@ -474,12 +481,14 @@ class World(object):
 		except KeyError:
 			self.currentRoom.terrain = args[0].strip().lower()
 		self.currentRoom.calculateCost()
+		self.GUIRefresh()
 		return "Setting room terrain to '%s'." % self.currentRoom.terrain
 
 	def rx(self, *args):
 		if args and args[0] and args[0].strip():
 			try:
 				self.currentRoom.x = int(args[0].strip())
+				self.GUIRefresh()
 				return "Setting room X coordinate to '%s'." % self.currentRoom.x
 			except ValueError:
 				return "Error: room coordinates must be comprised of digits only."
@@ -489,6 +498,7 @@ class World(object):
 		if args and args[0] and args[0].strip():
 			try:
 				self.currentRoom.y = int(args[0].strip())
+				self.GUIRefresh()
 				return "Setting room Y coordinate to '%s'." % self.currentRoom.y
 			except ValueError:
 				return "Error: room coordinates must be comprised of digits only."
@@ -498,6 +508,7 @@ class World(object):
 		if args and args[0] and args[0].strip():
 			try:
 				self.currentRoom.z = int(args[0].strip())
+				self.GUIRefresh()
 				return "Setting room Z coordinate to '%s'." % self.currentRoom.z
 			except ValueError:
 				return "Error: room coordinates must be comprised of digits only."
@@ -604,6 +615,7 @@ class World(object):
 			self.currentRoom.exits[direction].exitFlags.add("door")
 			self.currentRoom.exits[direction].doorFlags.add("hidden")
 			self.currentRoom.exits[direction].door = matchDict["name"]
+			self.GUIRefresh()
 			return "Adding secret '%s' to direction '%s'." % (matchDict["name"], direction)
 		elif direction not in self.currentRoom.exits:
 			return "Exit %s does not exist." % direction
@@ -617,6 +629,7 @@ class World(object):
 			if "hidden" in self.currentRoom.exits[direction].doorFlags:
 				self.currentRoom.exits[direction].doorFlags.remove("hidden")
 			self.currentRoom.exits[direction].door = ""
+			self.GUIRefresh()
 			return "Secret %s removed." % direction
 
 	def rlink(self, *args):
@@ -636,14 +649,18 @@ class World(object):
 				self.currentRoom.exits[direction] = self.getNewExit(direction)
 			self.currentRoom.exits[direction].to = matchDict["vnum"]
 			if matchDict["vnum"] == "undefined":
+				self.GUIRefresh()
 				return "Direction %s now undefined." % direction
 			elif not matchDict["oneway"]:
 				if reversedDirection not in self.rooms[matchDict["vnum"]].exits or self.rooms[matchDict["vnum"]].exits[reversedDirection].to == "undefined":
 					self.rooms[matchDict["vnum"]].exits[reversedDirection] = self.getNewExit(reversedDirection, self.currentRoom.vnum)
+					self.GUIRefresh()
 					return "Linking direction %s to %s with name '%s'.\nLinked exit %s in second room with this room." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "", reversedDirection)
 				else:
+					self.GUIRefresh()
 					return "Linking direction %s to %s with name '%s'.\nUnable to link exit %s in second room with this room: exit already defined." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "", reversedDirection)
 			else:
+				self.GUIRefresh()
 				return "Linking direction %s one way to %s with name '%s'." % (direction, matchDict["vnum"], self.rooms[matchDict["vnum"]].name if matchDict["vnum"] in self.rooms else "")
 		elif direction not in self.currentRoom.exits:
 			return "Exit %s does not exist." % direction
@@ -651,6 +668,7 @@ class World(object):
 			return "Exit '%s' links to '%s' with name '%s'." % (direction, self.currentRoom.exits[direction].to, self.rooms[self.currentRoom.exits[direction].to].name if self.currentRoom.exits[direction].to in self.rooms else "")
 		elif "remove".startswith(matchDict["mode"]):
 			del self.currentRoom.exits[direction]
+			self.GUIRefresh()
 			return "Exit %s removed." % direction
 
 	def getlabel(self, *args):
