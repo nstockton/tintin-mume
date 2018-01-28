@@ -6,4 +6,4 @@ from mapperproxy.mapper.main import main
 
 #gts
 
-#mapper main(outputFormat="tintin", use_gui=False)
+#mapper main(outputFormat="tintin", interface="text")
