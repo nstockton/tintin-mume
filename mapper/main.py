@@ -50,14 +50,14 @@ class Proxy(threading.Thread):
 
 
 class Server(threading.Thread):
-	def __init__(self, client, server, mapper, outputFormat, use_gui):
+	def __init__(self, client, server, mapper, outputFormat, interface):
 		threading.Thread.__init__(self)
 		self.name = "Server"
 		self._client = client
 		self._server = server
 		self._mapper = mapper
 		self._outputFormat = outputFormat
-		self._use_gui = use_gui
+		self._interface = interface
 		self.alive = threading.Event()
 
 	def close(self):
@@ -281,7 +281,7 @@ class Server(threading.Thread):
 				self.close()
 				continue
 			del clientBuffer[:]
-		if self._use_gui:
+		if self._interface != "text":
 			# Shutdown the gui
 			with self._mapper._gui_queue_lock:
 				self._mapper._gui_queue.put(None)
@@ -290,18 +290,15 @@ class Server(threading.Thread):
 			mpiThread.join()
 
 
-def main(outputFormat="normal", use_gui=True):
+def main(outputFormat, interface):
 	outputFormat = outputFormat.strip().lower()
-	if use_gui is True:
-		# The user wants to use a GUI, but didn't specify which one. Grab the preferred GUI option from the configuration.
-		from . import use_gui
-	if use_gui:
-		use_gui = use_gui.strip().lower()
+	interface = interface.strip().lower()
+	if interface != "text":
 		try:
 			import pyglet
 		except ImportError:
 			print("Unable to find pyglet. Disabling the GUI")
-			use_gui = False
+			interface = "text"
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	proxySocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	proxySocket.bind(("", 4000))
@@ -322,13 +319,13 @@ def main(outputFormat="normal", use_gui=True):
 			pass
 		clientConnection.close()
 		return
-	mapperThread = Mapper(client=clientConnection, server=serverConnection, use_gui=use_gui)
+	mapperThread = Mapper(client=clientConnection, server=serverConnection, interface=interface)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapper=mapperThread)
-	serverThread = Server(client=clientConnection, server=serverConnection, mapper=mapperThread, outputFormat=outputFormat, use_gui=use_gui)
+	serverThread = Server(client=clientConnection, server=serverConnection, mapper=mapperThread, outputFormat=outputFormat, interface=interface)
 	serverThread.start()
 	proxyThread.start()
 	mapperThread.start()
-	if use_gui:
+	if interface != "text":
 		pyglet.app.run()
 	serverThread.join()
 	try:

@@ -17,11 +17,10 @@ from .utils import page, iterItems, getDirectoryPath
 
 class EmulatedWorld(World):
 	"""The main emulated world class"""
-	def __init__(self, use_gui):
-
+	def __init__(self, interface):
 		self.output("Welcome to Mume Map Emulation!")
 		self.output("Loading the world database.")
-		World.__init__(self, use_gui=use_gui)
+		World.__init__(self, interface=interface)
 		self.output("Loaded {0} rooms.".format(len(self.rooms)))
 		self.config = {}
 		dataDirectory = getDirectoryPath("data")
@@ -210,11 +209,11 @@ class EmulatedWorld(World):
 
 
 class Emulator(threading.Thread):
-	def __init__(self, use_gui):
+	def __init__(self, interface):
 		threading.Thread.__init__(self)
 		self.name = "Emulator"
-		self.world = EmulatedWorld(use_gui)
-		self._use_gui = use_gui
+		self.world = EmulatedWorld(interface)
+		self._interface = interface
 
 	def run(self):
 		wld = self.world
@@ -242,24 +241,21 @@ class Emulator(threading.Thread):
 		# The user has typed 'q[uit]'. Save the config file and exit.
 		wld.saveConfig()
 		wld.output("Good bye.")
-		if self._use_gui:
+		if self._interface != "text":
 			with wld._gui_queue_lock:
 				wld._gui_queue.put(None)
 
 
-def main(use_gui=True):
-	if use_gui is True:
-		# The user wants to use a GUI, but didn't specify which one. Grab the preferred GUI option from the configuration.
-		from . import use_gui
-	if use_gui :
-		use_gui = use_gui.strip().lower()
+def main(interface):
+	interface = interface.strip().lower()
+	if interface != "text":
 		try:
 			import pyglet
 		except ImportError:
 			print("Unable to find pyglet. Disabling gui")
-			use_gui = False
-	emulator_thread=Emulator(use_gui)
+			interface = "text"
+	emulator_thread=Emulator(interface)
 	emulator_thread.start()
-	if use_gui:
+	if interface != "text":
 		pyglet.app.run()
 	emulator_thread.join()
