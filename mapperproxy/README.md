@@ -25,9 +25,8 @@ If you only need the mapperproxy, install the [Python interpreter,](https://pyth
 To start the mapper, run `python start.py` from the _mume-mapperproxy/_ directory. It accepts the following arguments:
 
 - `-e` Start in emulation mode. The mapper does not connect to MUME.
-- `-g [default|sighted]` Use a GUI. The default GUI is a high contrast one for visually impaired players. The sighted GUI uses png tiles.
-- `-t` Text only mode (no GUI).
-- `-f [normal|tintin|raw]` Select how the data from the server is transformed before being sent to the client. Default is "_normal_".
+- `-i [text|hc|sighted]` Select an interface. Text-only mode, high contrast GUI, or sighted GUI. The high contrast GUI is a high contrast one for visually impaired players. The sighted GUI uses png tiles. Default is text-only mode (no GUI).
+- `-f [normal|tintin|raw]` Select how the data from the server is transformed before being sent to the client. Normal mode filters out XML tags from the data received by the mud before sending it to the user's mud client, TinTin sends certain tags to the client in a special format for the mud client to trigger on, and raw sends the data from the mud to the mud client unmodified. Default is "_normal_".
 
 Once done, connect your client to `127.0.0.1`, port `4000`.
 
@@ -39,7 +38,7 @@ It is possible to start the mapper directly from the client. Here is, for exampl
 from mapper.main import main
 #action {^MPICOMMAND:%1:MPICOMMAND$} {#mume {#system %1;#mapper continue}}
 #gts
-#mapper main(outputFormat="tintin", use_gui="sighted")
+#mapper main(outputFormat="tintin", interface="sighted")
 ```
 
 ## Mapper Proxy commands

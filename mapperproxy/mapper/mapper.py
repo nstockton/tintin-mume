@@ -20,7 +20,7 @@ USER_DATA = 0
 MUD_DATA = 1
 
 class Mapper(threading.Thread, World):
-	def __init__(self, client, server, use_gui):
+	def __init__(self, client, server, interface):
 		threading.Thread.__init__(self)
 		self.name = "Mapper"
 		# Initialize the timer.
@@ -35,7 +35,7 @@ class Mapper(threading.Thread, World):
 		self.autoWalk = False
 		self.autoWalkDirections = []
 		self.lastPathFindQuery = ""
-		World.__init__(self, use_gui=use_gui)
+		World.__init__(self, interface=interface)
 
 	def output(self, text):
 		# Override World.output.

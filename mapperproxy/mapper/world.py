@@ -72,17 +72,17 @@ class Exit(object):
 
 
 class World(object):
-	def __init__(self, use_gui=None):
+	def __init__(self, interface="text"):
 		self.isSynced = False
 		self.rooms = {}
 		self.labels = {}
-		self._use_gui = use_gui
-		if use_gui:
+		self._interface = interface
+		if interface != "text":
 			self._gui_queue = Queue()
 			self._gui_queue_lock = threading.Lock()
-			if use_gui == "hc":
+			if interface == "hc":
 				from .hc import Window
-			elif use_gui == "sighted":
+			elif interface == "sighted":
 				from .sighted import Window
 			self.window=Window(self)
 		self._currentRoom = None
@@ -96,7 +96,7 @@ class World(object):
 	@currentRoom.setter
 	def currentRoom(self, value):
 		self._currentRoom = value
-		if self._use_gui:
+		if self._interface != "text":
 			with self._gui_queue_lock:
 				self._gui_queue.put(("on_map_sync", value))
 
@@ -106,7 +106,7 @@ class World(object):
 
 	def GUIRefresh(self):
 		"""Trigger the clearing and redrawing of rooms by the GUI"""
-		if self._use_gui:
+		if self._interface != "text":
 			with self._gui_queue_lock:
 				self._gui_queue.put(("on_gui_refresh",))
 

@@ -27,15 +27,6 @@ with config_lock:
 		if "debug_level" not in cfg or debug_level != cfg["debug_level"]:
 			cfg["debug_level"] = debug_level
 			c.save()
-	try:
-		use_gui = cfg["use_gui"]
-		if use_gui not in ("hc", "sighted"):
-			# Old versions of the configuration might not contain one of these current values for the use_gui setting.
-			cfg["use_gui"] = use_gui = "hc"
-			cfg.save()
-	except KeyError:
-		cfg["use_gui"] = use_gui = "hc"
-		cfg.save()
 	del cfg
 
 if debug_level is not None or debug_level != 0:
