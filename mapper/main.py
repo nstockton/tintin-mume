@@ -5,6 +5,10 @@
 from __future__ import print_function
 
 import socket
+try:
+	import ssl
+except ImportError:
+	ssl = None
 from telnetlib import IAC, GA, DONT, DO, WONT, WILL, theNULL, SB, SE, TTYPE, NAWS
 import threading
 
@@ -307,6 +311,8 @@ def main(outputFormat, interface):
 	clientConnection.settimeout(1.0)
 	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serverConnection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+	if ssl is not None:
+		serverConnection = ssl.wrap_socket(serverConnection, cert_reqs=ssl.CERT_REQUIRED, ca_certs="cacert.pem", ssl_version=ssl.PROTOCOL_TLS)
 	try:
 		serverConnection.connect(("193.134.218.98", 443))
 
@@ -319,6 +325,14 @@ def main(outputFormat, interface):
 			pass
 		clientConnection.close()
 		return
+	if ssl is not None:
+		# Validating server identity with ssl module
+		# See https://wiki.python.org/moin/SSL
+		for field in serverConnection.getpeercert()["subject"]:
+			if field[0][0] == "commonName":
+				certhost = field[0][1]
+				if certhost != "mume.org":
+					raise ssl.SSLError("Host name 'mume.org' doesn't match certificate host '{}'".format(certhost))
 	mapperThread = Mapper(client=clientConnection, server=serverConnection, interface=interface)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapper=mapperThread)
 	serverThread = Server(client=clientConnection, server=serverConnection, mapper=mapperThread, outputFormat=outputFormat, interface=interface)

@@ -8,7 +8,7 @@ import py2exe
 
 APP_NAME = "Mapper Proxy"
 APP_AUTHOR = "Nick Stockton"
-APP_VERSION = "2.1"
+APP_VERSION = "2.2"
 USE_CUSTOM_PYTHON_DLL = False
 PYTHON_DLL = "python34.dll"
 
@@ -34,7 +34,6 @@ class Target(object):
 program = Target(description="%s V%s" % (APP_NAME, APP_VERSION), script="start.py", dest_base=APP_NAME)
 
 excludes = [
-	"_ssl",
 	"_gtkagg",
 	"_tkagg",
 	"bsddb",
@@ -92,7 +91,7 @@ setup_options = {
 	}
 }
 
-setup(options=setup_options, zipfile=None, console=[program], data_files=[("maps", glob.glob("maps\\*")), ("data", glob.glob("data\\*"))])
+setup(options=setup_options, zipfile=None, console=[program], data_files=[(".", ["./cacert.pem"]), ("maps", glob.glob("maps\\*")), ("data", glob.glob("data\\*"))])
 
 # Copy our compressed version of python34.dll to destination folder
 if USE_CUSTOM_PYTHON_DLL and os.path.exists(PYTHON_DLL) and not os.path.isdir(PYTHON_DLL):
