@@ -99,6 +99,9 @@ class Mapper(threading.Thread, World):
 	def user_command_fdoor(self, *args):
 		self.clientSend(self.fdoor(*args))
 
+	def user_command_flabel(self, *args):
+		self.clientSend(self.flabel(*args))
+
 	def user_command_fname(self, *args):
 		self.clientSend(self.fname(*args))
 
@@ -171,7 +174,7 @@ class Mapper(threading.Thread, World):
 			self.clientSend("\r\n".join(result))
 
 	def user_command_getlabel(self, *args):
-		self.getlabel(*args)
+		self.clientSend(self.getlabel(*args))
 
 	def user_command_savemap(self, *args):
 		self.saveRooms()
