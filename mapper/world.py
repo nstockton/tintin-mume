@@ -198,6 +198,9 @@ class World(object):
 				return {}
 		self.labels.update(getLabels(SAMPLE_LABELS_FILE))
 		self.labels.update(getLabels(LABELS_FILE))
+		orphans = [label for label, vnum in iterItems(self.labels) if vnum not in self.rooms]
+		for label in orphans:
+			del self.labels[label]
 
 	def saveRooms(self):
 		self.output("Creating dict from room objects.")
@@ -406,7 +409,20 @@ class World(object):
 			return "Nothing found."
 		currentRoom = self.currentRoom
 		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
-		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in results[:20])
+		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in reversed(results[:20]))
+
+	def flabel(self, *args):
+		if not self.labels:
+			return "No labels defined."
+		if not args or args[0] is None or not args[0].strip():
+			text = ""
+		else:
+			text = args[0].strip().lower()
+		results = {self.rooms[vnum] for label, vnum in iterItems(self.labels) if text and text in label.strip().lower() or not text}
+		if not results:
+			return "Nothing found."
+		currentRoom = self.currentRoom
+		return "\n".join("{vnum}, {name}, {labels}".format(labels=self.getlabel(roomObj.vnum), **vars(roomObj)) for roomObj in reversed(sorted(results, key=lambda r: r.manhattanDistance(currentRoom))[:20]))
 
 	def fname(self, *args):
 		if not args or args[0] is None or not args[0].strip():
@@ -416,7 +432,7 @@ class World(object):
 			return "Nothing found."
 		currentRoom = self.currentRoom
 		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
-		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in results[:20])
+		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in reversed(results[:20]))
 
 	def fnote(self, *args):
 		if not args or args[0] is None or not args[0].strip():
@@ -426,7 +442,7 @@ class World(object):
 			return "Nothing found."
 		currentRoom = self.currentRoom
 		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
-		return "\n".join("{vnum}, {name}, {note}".format(**vars(roomObj)) for roomObj in results[:20])
+		return "\n".join("{vnum}, {name}, {note}".format(**vars(roomObj)) for roomObj in reversed(results[:20]))
 
 	def rnote(self, *args):
 		if not args or args[0] is None or not args[0].strip():
@@ -678,9 +694,9 @@ class World(object):
 			findVnum = args[0].strip()
 		result = ", ".join(sorted(label for label, vnum in iterItems(self.labels) if vnum == findVnum))
 		if result:
-			self.output("Room labels: {}".format(result))
+			return "Room labels: {}".format(result)
 		else:
-			self.output("Room not labeled.")
+			return "Room not labeled."
 
 	def rlabel(self, *args):
 		if not args or not args[0]:

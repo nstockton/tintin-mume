@@ -6,6 +6,8 @@ import sys
 
 import py2exe
 
+import speechlight
+
 APP_NAME = "Mapper Proxy"
 APP_AUTHOR = "Nick Stockton"
 APP_VERSION = "2.2"
@@ -91,7 +93,7 @@ setup_options = {
 	}
 }
 
-setup(options=setup_options, zipfile=None, console=[program], data_files=[(".", ["./cacert.pem"]), ("maps", glob.glob("maps\\*")), ("data", glob.glob("data\\*"))])
+setup(options=setup_options, zipfile=None, console=[program], data_files=[(".", ["./cacert.pem"]), ("speech_libs", glob.glob(os.path.join(speechlight.where(), "*.dll"))), ("maps", glob.glob("maps\\*")), ("data", glob.glob("data\\*"))])
 
 # Copy our compressed version of python34.dll to destination folder
 if USE_CUSTOM_PYTHON_DLL and os.path.exists(PYTHON_DLL) and not os.path.isdir(PYTHON_DLL):

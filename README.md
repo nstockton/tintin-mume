@@ -20,6 +20,11 @@ Mume-mapperproxy is distributed as part of
 ### Standalone installation
 If you only need the mapperproxy, install the [Python interpreter,](https://python.org "Python Home Page") and make sure it's in your path before running this package.
 
+After Python is installed, execute the following command from the top level directory of this repository to install the module dependencies.
+```
+pip install -U -r requirements.txt
+```
+
 ## Mapper Proxy usage
 ### Manual start up
 To start the mapper, run `python start.py` from the _mume-mapperproxy/_ directory. It accepts the following arguments:
@@ -72,9 +77,10 @@ Auto mapping mode must be on for these commands to have any effect.
 * secret [add|remove] [name] [north|east|south|west|up|down]  --  Add or remove a secret door in the current room.
 
 ### Searching Commands
-* fdoor [text]  --  Search the map for rooms with doors matching text. Returns the closest 20 rooms to you based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry")
-* fname [text]  --  Search the map for rooms with names matching text. Returns the closest 20 rooms to you based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry")
-* fnote [text]  --  Search the map for rooms with notes matching text. Returns the closest 20 rooms to you based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry")
+* fdoor [text]  --  Search the map for rooms with doors matching text. Returns the nearest 20 rooms to you (furthest to closest) based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry")
+* flabel [text]  --  Search the map for rooms with labels matching text. Returns the nearest 20 rooms to you (furthest to closest) based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry") If no text is given, will show the 20 closest labeled rooms.
+* fname [text]  --  Search the map for rooms with names matching text. Returns the nearest 20 rooms to you (furthest to closest) based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry")
+* fnote [text]  --  Search the map for rooms with notes matching text. Returns the nearest 20 rooms to you (furthest to closest) based on the [Manhattan Distance.](https://en.wikipedia.org/wiki/Taxicab_geometry "Wikipedia Page On Taxicab Geometry")
 
 ### Path commands
 * path [vnum|label] [nodeath|nocity|noshallowwater|noforest|nohills|noroad|nocavern|nofield|nowater|nounderwater|norapids|noindoors|nobrush|notunnel|nomountains|norandom|noundefined]  --  Print speed walk directions from the current room to the room with vnum or label. If one or more avoid terrain flags are given after the destination, the mapper will try to avoid all rooms with that terrain type. Multiple avoid terrains can be ringed together with the '|' character, for example, path ingrove noroad|nobrush.
