@@ -19,6 +19,15 @@ from .mpi import MPI
 from .utils import multiReplace
 
 
+CHARSET = chr(42)
+SB_REQUEST = chr(1)
+SB_ACCEPTED = chr(2)
+SB_REJECTED = chr(3)
+SB_TTABLE_IS = chr(4)
+SB_TTABLE_REJECTED = chr(5)
+SB_TTABLE_ACK = chr(6)
+SB_TTABLE_NAK = chr(7)
+
 class Proxy(threading.Thread):
 	def __init__(self, client, server, mapper):
 		threading.Thread.__init__(self)
@@ -79,8 +88,18 @@ class Server(threading.Thread):
 		ordSB = ord(SB)
 		ordSE = ord(SE)
 		ordLF = ord("\n")
+		ordCHARSET = ord(CHARSET)
+		charsetSep = b";"
+		charsets = {
+			"ascii": b"US-ASCII",
+			"latin-1": b"ISO-8859-1",
+			"utf-8": b"UTF-8"
+		}
+		defaultCharset = charsets["ascii"]
 		inIAC = False
 		inSubOption = False
+		inCharset = False
+		inCharsetResponse = False
 		inMPI = False
 		mpiThreads = []
 		mpiCounter = 0
@@ -90,6 +109,8 @@ class Server(threading.Thread):
 		clientBuffer = bytearray()
 		tagBuffer = bytearray()
 		textBuffer = bytearray()
+		charsetResponseBuffer = bytearray()
+		charsetResponseCode = None
 		readingTag = False
 		inGratuitous = False
 		modeNone = 0
@@ -132,6 +153,9 @@ class Server(threading.Thread):
 					self._server.sendall(b"~$#EX2\n3G\n")
 					# Tell the Mume server to put IAC-GA at end of prompts.
 					self._server.sendall(b"~$#EP2\nG\n")
+					# Tell the server that we will negotiate the character set.
+					self._server.sendall(IAC + WILL + CHARSET)
+					inCharset = True
 					encounteredInitialOutput = True
 			except EnvironmentError:
 				self.close()
@@ -150,6 +174,13 @@ class Server(threading.Thread):
 						inSubOption = True
 					elif byte == ordSE:
 						# Sub-option negotiation end
+						if inCharset and inCharsetResponse:
+							# IAC SE was erroneously added to the client buffer. Remove it.
+							del clientBuffer[-2:]
+							charsetResponseCode = None
+							del charsetResponseBuffer[:]
+							inCharsetResponse = False
+							inCharset = False
 						inSubOption = False
 					elif inSubOption:
 						# Ignore subsequent bytes until the sub option negotiation has ended.
@@ -164,6 +195,12 @@ class Server(threading.Thread):
 							del clientBuffer[-2:]
 						else:
 							textBuffer.append(byte)
+					elif byte == ordCHARSET and inCharset and clientBuffer[-3:] == IAC + DO + CHARSET:
+						# Negotiate the character set.
+						self._server.sendall(IAC + SB + CHARSET + SB_REQUEST + charsetSep + defaultCharset + IAC + SE)
+						# IAC + DO + CHARSET was appended to the client buffer earlier.
+						# It must be removed as character set negotiation data should not be sent to the mud client.
+						del clientBuffer[-3:]
 					elif byte == ordGA:
 						del clientBuffer[-2:]
 						clientBuffer.extend(b"\r\n")
@@ -171,7 +208,19 @@ class Server(threading.Thread):
 				elif byte == ordIAC:
 					clientBuffer.append(byte)
 					inIAC = True
-				elif inSubOption or byte in ignoreBytes:
+				elif inSubOption:
+					if byte == ordCHARSET and inCharset and clientBuffer[-2:] == IAC + SB:
+						# Character set negotiation responses should *not* be sent to the client.
+						del clientBuffer[-2:]
+						inCharsetResponse = True
+					elif inCharsetResponse:
+						if charsetResponseCode is None:
+							charsetResponseCode = byte
+						else:
+							charsetResponseBuffer.append(byte)
+					else:
+						clientBuffer.append(byte)
+				elif byte in ignoreBytes:
 					clientBuffer.append(byte)
 				elif inMPI:
 					if byte == ordLF and mpiCommand is None and mpiLen is None:
