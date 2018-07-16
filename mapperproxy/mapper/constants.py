@@ -201,7 +201,10 @@ VALID_LOAD_FLAGS = [
 	"warg",
 	"boat",
 	"attention",
-	"tower"
+	"tower",
+	"clock",
+	"mail",
+	"stable"
 ]
 
 VALID_EXIT_FLAGS = [
@@ -212,7 +215,12 @@ VALID_EXIT_FLAGS = [
 	"random",
 	"special",
 	"avoid",
-	"no_match"
+	"no_match",
+	"flow",
+	"no_flee",
+	"damage",
+	"fall",
+	"guarded"
 ]
 
 VALID_DOOR_FLAGS = [
@@ -222,8 +230,10 @@ VALID_DOOR_FLAGS = [
 	"nobreak",
 	"nopick",
 	"delayed",
-	"reserved1",
-	"reserved2"
+	"callable",
+	"knockable",
+	"magic",
+	"action"
 ]
 
 DIRECTION_COORDINATES = {
