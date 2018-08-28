@@ -5,6 +5,7 @@
 from __future__ import print_function
 
 import os.path
+import re
 import subprocess
 import sys
 from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA
@@ -13,15 +14,10 @@ import textwrap
 from . import terminalsize
 
 
+WHITE_SPACE_REGEX = re.compile(r"\s+", flags=re.UNICODE)
+
 def simplified(text):
-	result = []
-	for character in text:
-		if result and character in ("\t", "\n", "\v", "\f", "\r", " "):
-			if result[-1] != " ":
-				result.append(" ")
-		else:
-			result.append(character)
-	return "".join(result).strip()
+	return WHITE_SPACE_REGEX.sub(" ", text).strip()
 
 def regexFuzzy(data):
 	if not data:
