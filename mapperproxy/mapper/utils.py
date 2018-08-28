@@ -41,6 +41,12 @@ def iterItems(dictionary, **kw):
 	except AttributeError:
 		return iter(dictionary.items(**kw))
 
+def iterRange(*args):
+	try:
+		return iter(xrange(*args))
+	except NameError:
+		return iter(range(*args))
+
 def multiReplace(text, replacements):
 	try:
 		replacements = iterItems(replacements)
