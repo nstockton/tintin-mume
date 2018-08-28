@@ -21,15 +21,8 @@ except ImportError:
 
 from .config import Config, config_lock
 from .constants import DIRECTIONS, TERRAIN_COLORS
-from .utils import iterItems
+from .utils import iterItems, iterRange
 from .vec2d import Vec2d
-
-# Monkey patch range with xrange in Python2.
-_range = range
-try:
-	range = xrange
-except NameError:
-	pass
 
 logger = logging.getLogger(__name__)
 DIRECTIONS_2D = frozenset(DIRECTIONS[:-2])
@@ -131,7 +124,7 @@ class Window(pyglet.window.Window):
 		if self.blink:
 			pyglet.clock.schedule_interval_soft(self.blinker, 1.0 / 20)
 			self.enable_current_room_markers()
-		self.groups = tuple(pyglet.graphics.OrderedGroup(i) for i in range(6))
+		self.groups = tuple(pyglet.graphics.OrderedGroup(i) for i in iterRange(6))
 
 	@property
 	def size(self):
@@ -413,13 +406,13 @@ class Window(pyglet.window.Window):
 		x = radius # we start at angle 0
 		y = 0
 		ps = []
-		for i in range(num_segments):
+		for i in iterRange(num_segments):
 			ps += [Vec2d(cp.x + x, cp.y + y)]
 			t = x
 			x = c * x - s * y
 			y = s * t + c * y
 		ps2 = [ps[0]]
-		for i in range(1, int((len(ps) + 1) // 2)):
+		for i in iterRange(1, int((len(ps) + 1) // 2)):
 			ps2.append(ps[i])
 			ps2.append(ps[-i])
 		ps = ps2

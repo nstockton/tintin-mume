@@ -16,17 +16,11 @@ from .config import Config, config_lock
 from .constants import USER_COMMANDS_REGEX, XML_UNESCAPE_PATTERNS
 from .mapper import USER_DATA, MUD_DATA, Mapper
 from .mpi import MPI
-from .utils import multiReplace
+from .utils import iterRange, multiReplace
 
 
-CHARSET = chr(42)
-SB_REQUEST = chr(1)
-SB_ACCEPTED = chr(2)
-SB_REJECTED = chr(3)
-SB_TTABLE_IS = chr(4)
-SB_TTABLE_REJECTED = chr(5)
-SB_TTABLE_ACK = chr(6)
-SB_TTABLE_NAK = chr(7)
+CHARSET = bytes(chr(42), encoding="us-ascii")
+SB_REQUEST, SB_ACCEPTED, SB_REJECTED, SB_TTABLE_IS, SB_TTABLE_REJECTED, SB_TTABLE_ACK, SB_TTABLE_NAK = (bytes(chr(i), encoding="us-ascii") for i in iterRange(1, 8))
 
 class Proxy(threading.Thread):
 	def __init__(self, client, server, mapper):
