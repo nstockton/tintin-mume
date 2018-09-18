@@ -19,8 +19,8 @@ from .mpi import MPI
 from .utils import iterRange, multiReplace
 
 
-CHARSET = bytes(chr(42), encoding="us-ascii")
-SB_REQUEST, SB_ACCEPTED, SB_REJECTED, SB_TTABLE_IS, SB_TTABLE_REJECTED, SB_TTABLE_ACK, SB_TTABLE_NAK = (bytes(chr(i), encoding="us-ascii") for i in iterRange(1, 8))
+CHARSET = chr(42).encode("us-ascii")
+SB_REQUEST, SB_ACCEPTED, SB_REJECTED, SB_TTABLE_IS, SB_TTABLE_REJECTED, SB_TTABLE_ACK, SB_TTABLE_NAK = (chr(i).encode("us-ascii") for i in iterRange(1, 8))
 
 class Proxy(threading.Thread):
 	def __init__(self, client, server, mapper):

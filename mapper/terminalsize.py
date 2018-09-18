@@ -33,14 +33,17 @@ def get_terminal_size():
 		http://stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
 	"""
 	tuple_xy = None
-	if OS_NAME == "Windows":
-		tuple_xy = _get_terminal_size_windows()
-	elif OS_NAME in ["Linux", "Darwin"] or OS_NAME.startswith("CYGWIN"):
-		tuple_xy = _get_terminal_size_linux()
-	elif tuple_xy is None:
-		tuple_xy = _get_terminal_size_tput()
-	if tuple_xy is None:
-		tuple_xy = (80, 24)
+	try:
+		tuple_xy = tuple(os.get_terminal_size())
+	except AttributeError:
+		if OS_NAME == "Windows":
+			tuple_xy = _get_terminal_size_windows()
+		elif OS_NAME in ["Linux", "Darwin"] or OS_NAME.startswith("CYGWIN") or OS_NAME.endswith("BSD"):
+			tuple_xy = _get_terminal_size_linux()
+		elif tuple_xy is None:
+			tuple_xy = _get_terminal_size_tput()
+		if tuple_xy is None:
+			tuple_xy = (80, 24)
 	return tuple_xy
 
 
@@ -67,8 +70,8 @@ def _get_terminal_size_tput():
 		src: http://stackoverflow.com/questions/263890/how-do-i-find-the-width-height-of-a-terminal-window
 	"""
 	try:
-		cols = int(subprocess.check_call(shlex.split('tput cols')))
-		rows = int(subprocess.check_call(shlex.split('tput lines')))
+		cols = int(subprocess.check_output(shlex.split('tput cols')))
+		rows = int(subprocess.check_output(shlex.split('tput lines')))
 		return (cols, rows)
 	except:
 		return None
