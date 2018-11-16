@@ -13,7 +13,7 @@ from telnetlib import IAC, GA, DONT, DO, WONT, WILL, theNULL, SB, SE, TTYPE, NAW
 import threading
 
 from .config import Config, config_lock
-from .constants import USER_COMMANDS_REGEX, XML_UNESCAPE_PATTERNS
+from .constants import XML_UNESCAPE_PATTERNS
 from .mapper import USER_DATA, MUD_DATA, Mapper
 from .mpi import MPI
 from .utils import iterRange, multiReplace
@@ -35,6 +35,7 @@ class Proxy(threading.Thread):
 		self.alive.clear()
 
 	def run(self):
+		userCommands = [func[len("user_command_"):].encode("us-ascii", "ignore") for func in dir(self._mapper) if func.startswith("user_command_")]
 		self.alive.set()
 		while self.alive.isSet():
 			try:
@@ -46,7 +47,7 @@ class Proxy(threading.Thread):
 				continue
 			if not data:
 				self.close()
-			elif USER_COMMANDS_REGEX.match(data):
+			elif data.strip() and data.strip().split()[0] in userCommands:
 				self._mapper.queue.put((USER_DATA, data))
 			else:
 				try:
@@ -103,17 +104,18 @@ class Server(threading.Thread):
 		clientBuffer = bytearray()
 		tagBuffer = bytearray()
 		textBuffer = bytearray()
+		lineBuffer = bytearray()
 		charsetResponseBuffer = bytearray()
 		charsetResponseCode = None
 		readingTag = False
 		inGratuitous = False
 		modeNone = 0
-		modeRoom = 2
-		modeName = 4
-		modeDescription = 8
-		modeExits = 16
-		modePrompt = 32
-		modeTerrain = 64
+		modeRoom = 1
+		modeName = 2
+		modeDescription = 3
+		modeExits = 4
+		modePrompt = 5
+		modeTerrain = 6
 		xmlMode = modeNone
 		tagReplacements = {
 			b"prompt": b"PROMPT:",
@@ -136,24 +138,24 @@ class Server(threading.Thread):
 		while self.alive.isSet():
 			try:
 				data = self._server.recv(4096)
-				if not data:
-					self.close()
-					continue
-				elif not encounteredInitialOutput and data.startswith(initialOutput):
-					# The connection to Mume has been established, and the game has just responded with the login screen.
-					# Identify for Mume Remote Editing.
-					self._server.sendall(b"~$#EI\n")
-					# Turn on XML mode.
-					self._server.sendall(b"~$#EX2\n3G\n")
-					# Tell the Mume server to put IAC-GA at end of prompts.
-					self._server.sendall(b"~$#EP2\nG\n")
-					# Tell the server that we will negotiate the character set.
-					self._server.sendall(IAC + WILL + CHARSET)
-					inCharset = True
-					encounteredInitialOutput = True
 			except EnvironmentError:
 				self.close()
 				continue
+			if not data:
+				self.close()
+				continue
+			elif not encounteredInitialOutput and data.startswith(initialOutput):
+				# The connection to Mume has been established, and the game has just responded with the login screen.
+				# Identify for Mume Remote Editing.
+				self._server.sendall(b"~$#EI\n")
+				# Turn on XML mode.
+				self._server.sendall(b"~$#EX2\n3G\n")
+				# Tell the Mume server to put IAC-GA at end of prompts.
+				self._server.sendall(b"~$#EP2\nG\n")
+				# Tell the server that we will negotiate the character set.
+				self._server.sendall(IAC + WILL + CHARSET)
+				inCharset = True
+				encounteredInitialOutput = True
 			for byte in bytearray(data):
 				if inIAC:
 					clientBuffer.append(byte)
@@ -187,8 +189,8 @@ class Server(threading.Thread):
 							# IAC + IAC was appended to the client buffer earlier.
 							# It must be removed as MPI data should not be sent to the mud client.
 							del clientBuffer[-2:]
-						else:
-							textBuffer.append(byte)
+						elif xmlMode == modeNone:
+							lineBuffer.append(byte)
 					elif byte == ordCHARSET and inCharset and clientBuffer[-3:] == IAC + DO + CHARSET:
 						# Negotiate the character set.
 						self._server.sendall(IAC + SB + CHARSET + SB_REQUEST + charsetSep + defaultCharset + IAC + SE)
@@ -196,26 +198,24 @@ class Server(threading.Thread):
 						# It must be removed as character set negotiation data should not be sent to the mud client.
 						del clientBuffer[-3:]
 					elif byte == ordGA:
-						del clientBuffer[-2:]
-						clientBuffer.extend(b"\r\n")
 						self._mapper.queue.put((MUD_DATA, ("iac_ga", b"")))
+						if xmlMode == modeNone:
+							lineBuffer.extend(b"\r\n")
 				elif byte == ordIAC:
 					clientBuffer.append(byte)
 					inIAC = True
-				elif inSubOption:
+				elif inSubOption or byte in ignoreBytes:
 					if byte == ordCHARSET and inCharset and clientBuffer[-2:] == IAC + SB:
 						# Character set negotiation responses should *not* be sent to the client.
 						del clientBuffer[-2:]
 						inCharsetResponse = True
-					elif inCharsetResponse:
+					elif inCharsetResponse and byte not in ignoreBytes:
 						if charsetResponseCode is None:
 							charsetResponseCode = byte
 						else:
 							charsetResponseBuffer.append(byte)
 					else:
 						clientBuffer.append(byte)
-				elif byte in ignoreBytes:
-					clientBuffer.append(byte)
 				elif inMPI:
 					if byte == ordLF and mpiCommand is None and mpiLen is None:
 						# The first line of MPI data was recieved.
@@ -250,21 +250,14 @@ class Server(threading.Thread):
 					if byte == 62: # >
 						# End of XML tag reached.
 						if xmlMode == modeNone:
-							if textBuffer:
-								self._mapper.queue.put((MUD_DATA, ("misc", bytes(textBuffer))))
-								del textBuffer[:]
-							if tagBuffer.startswith(b"/xml"):
-								pass
+							if tagBuffer.startswith(b"exits"):
+								xmlMode = modeExits
 							elif tagBuffer.startswith(b"prompt"):
 								xmlMode = modePrompt
-							elif tagBuffer.startswith(b"exits"):
-								xmlMode = modeExits
 							elif tagBuffer.startswith(b"room"):
 								xmlMode = modeRoom
 							elif tagBuffer.startswith(b"movement"):
 								self._mapper.queue.put((MUD_DATA, ("movement", bytes(tagBuffer)[8:].replace(b" dir=", b"", 1).split(b"/", 1)[0])))
-							elif tagBuffer.startswith(b"status"):
-								xmlMode = modeNone
 						elif xmlMode == modeRoom:
 							if tagBuffer.startswith(b"name"):
 								xmlMode = modeName
@@ -279,29 +272,25 @@ class Server(threading.Thread):
 								inGratuitous = False
 							elif tagBuffer.startswith(b"/room"):
 								self._mapper.queue.put((MUD_DATA, ("dynamic", bytes(textBuffer))))
-								del textBuffer[:]
 								xmlMode = modeNone
 						elif xmlMode == modeName and tagBuffer.startswith(b"/name"):
 							self._mapper.queue.put((MUD_DATA, ("name", bytes(textBuffer))))
-							del textBuffer[:]
 							xmlMode = modeRoom
 						elif xmlMode == modeDescription and tagBuffer.startswith(b"/description"):
 							self._mapper.queue.put((MUD_DATA, ("description", bytes(textBuffer))))
-							del textBuffer[:]
 							xmlMode = modeRoom
 						elif xmlMode == modeTerrain and tagBuffer.startswith(b"/terrain"):
 							xmlMode = modeRoom
 						elif xmlMode == modeExits and tagBuffer.startswith(b"/exits"):
 							self._mapper.queue.put((MUD_DATA, ("exits", bytes(textBuffer))))
-							del textBuffer[:]
 							xmlMode = modeNone
 						elif xmlMode == modePrompt and tagBuffer.startswith(b"/prompt"):
 							self._mapper.queue.put((MUD_DATA, ("prompt", bytes(textBuffer))))
-							del textBuffer[:]
 							xmlMode = modeNone
 						if tinTinFormat:
 							clientBuffer.extend(tagReplacements.get(bytes(tagBuffer), b""))
 						del tagBuffer[:]
+						del textBuffer[:]
 						readingTag = False
 					else:
 						tagBuffer.append(byte)
@@ -316,8 +305,17 @@ class Server(threading.Thread):
 				else:
 					# Byte is not part of a Telnet negotiation, MPI negotiation, or XML tag name.
 					mpiCounter = 0
-					textBuffer.append(byte)
-					if not rawFormat and not inGratuitous or rawFormat:
+					if xmlMode == modeNone:
+						if byte == ordLF and lineBuffer:
+							for line in bytes(lineBuffer).splitlines():
+								if line.strip():
+									self._mapper.queue.put((MUD_DATA, ("line", line)))
+							del lineBuffer[:]
+						else:
+							lineBuffer.append(byte)
+					else:
+						textBuffer.append(byte)
+					if rawFormat or not inGratuitous:
 						clientBuffer.append(byte)
 			data = bytes(clientBuffer)
 			if not rawFormat:
