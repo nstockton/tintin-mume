@@ -12,7 +12,7 @@ import threading
 from timeit import default_timer
 
 from .config import Config, config_lock
-from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, USER_COMMANDS_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX, XML_UNESCAPE_PATTERNS
+from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX, XML_UNESCAPE_PATTERNS
 from .world import Room, Exit, World
 from .utils import iterItems, decodeBytes, regexFuzzy, simplified, multiReplace
 
@@ -434,11 +434,10 @@ class Mapper(threading.Thread, World):
 			if data is None:
 				break
 			elif dataType == USER_DATA:
-				# The data was sent from the user's mud client.
-				matchedUserInput = USER_COMMANDS_REGEX.match(data)
-				if matchedUserInput:
-					# The data was a valid mapper command.
-					getattr(self, "user_command_{0}".format(decodeBytes(matchedUserInput.group("command"))))(decodeBytes(matchedUserInput.group("arguments")))
+				# The data was a valid mapper command, sent from the user's mud client.
+				userCommand = data.strip().split()[0]
+				args = data[len(userCommand):].strip()
+				getattr(self, "user_command_{}".format(decodeBytes(userCommand)))(decodeBytes(args))
 				continue
 			# The data was from the mud server.
 			event, data = data
@@ -471,20 +470,20 @@ class Mapper(threading.Thread, World):
 			elif scouting:
 				# Ignore room data received by scouting.
 				continue
-			elif event == "misc":
-				if "You quietly scout " in data:
+			elif event == "line":
+				if data.startswith("You quietly scout "):
 					scouting = True
 					continue
-				if "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling." in data:
+				elif data == "Wet, cold and filled with mud you drop down into a dark and moist cave, while you notice the mud above you moving to close the hole you left in the cave ceiling.":
 					self.sync(vnum="17189")
-				elif "The gravel below your feet loosens, shifting slightly.. Suddenly, you lose your balance and crash to the cave floor below." in data:
+				elif data == "The gravel below your feet loosens, shifting slightly.. Suddenly, you lose your balance and crash to the cave floor below.":
 					self.sync(vnum="15324")
 				if MOVEMENT_FORCED_REGEX.search(data) or MOVEMENT_PREVENTED_REGEX.search(data):
 					self.stopRun()
 				if self.isSynced and self.autoMapping:
-					if "It's too difficult to ride here." in data and self.currentRoom.ridable != "notridable":
+					if data == "It's too difficult to ride here." and self.currentRoom.ridable != "notridable":
 						self.clientSend(self.rridable("notridable"))
-					elif "You are already riding." in data and self.currentRoom.ridable != "ridable":
+					elif data == "You are already riding." and self.currentRoom.ridable != "ridable":
 						self.clientSend(self.rridable("ridable"))
 			elif event == "name":
 				name = simplified(data) if data not in ("You just see a dense fog around you...", "It is pitch black...") else ""
