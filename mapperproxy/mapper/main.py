@@ -13,10 +13,9 @@ from telnetlib import IAC, GA, DONT, DO, WONT, WILL, theNULL, SB, SE, TTYPE, NAW
 import threading
 
 from .config import Config, config_lock
-from .constants import XML_UNESCAPE_PATTERNS
 from .mapper import USER_DATA, MUD_DATA, Mapper
 from .mpi import MPI
-from .utils import iterRange, multiReplace
+from .utils import iterRange, unescapeXML
 
 
 CHARSET = chr(42).encode("us-ascii")
@@ -319,7 +318,7 @@ class Server(threading.Thread):
 						clientBuffer.append(byte)
 			data = bytes(clientBuffer)
 			if not rawFormat:
-				data = multiReplace(data, XML_UNESCAPE_PATTERNS).replace(b"\r", b"").replace(b"\n\n", b"\n")
+				data = unescapeXML(data, isbytes=True).replace(b"\r", b"").replace(b"\n\n", b"\n")
 			try:
 				self._client.sendall(data)
 			except EnvironmentError:
@@ -374,7 +373,7 @@ def main(outputFormat, interface):
 				certhost = field[0][1]
 				if certhost != "mume.org":
 					raise ssl.SSLError("Host name 'mume.org' doesn't match certificate host '{}'".format(certhost))
-	mapperThread = Mapper(client=clientConnection, server=serverConnection, interface=interface)
+	mapperThread = Mapper(client=clientConnection, server=serverConnection, outputFormat=outputFormat, interface=interface)
 	proxyThread = Proxy(client=clientConnection, server=serverConnection, mapper=mapperThread)
 	serverThread = Server(client=clientConnection, server=serverConnection, mapper=mapperThread, outputFormat=outputFormat, interface=interface)
 	serverThread.start()

@@ -251,12 +251,3 @@ REVERSE_DIRECTIONS = {
 	"up": "down",
 	"down": "up"
 }
-
-XML_UNESCAPE_PATTERNS = (
-	(b"&lt;", b"<"),
-	(b"&gt;", b">"),
-	(b"&quot;", b"\""),
-	(b"&#39;", b"'"),
-	(b"&apos;", b"'"),
-	(b"&amp;", b"&")
-)

@@ -15,6 +15,17 @@ from . import terminalsize
 
 
 WHITE_SPACE_REGEX = re.compile(r"\s+", flags=re.UNICODE)
+ESCAPE_XML_STR_ENTITIES = (
+	("&", "&amp;"),
+	("<", "&lt;"),
+	(">", "&gt;"),
+	("\"", "&quot;"),
+	("'", "&#39;"),
+	("'", "&apos;")
+)
+UNESCAPE_XML_STR_ENTITIES = tuple((second, first) for first, second in ESCAPE_XML_STR_ENTITIES)
+ESCAPE_XML_BYTES_ENTITIES = tuple((first.encode("us-ascii"), second.encode("us-ascii")) for first, second in ESCAPE_XML_STR_ENTITIES)
+UNESCAPE_XML_BYTES_ENTITIES = tuple((second, first) for first, second in ESCAPE_XML_BYTES_ENTITIES)
 
 def simplified(text):
 	return WHITE_SPACE_REGEX.sub(" ", text).strip()
@@ -47,15 +58,21 @@ def iterRange(*args):
 	except NameError:
 		return iter(range(*args))
 
-def multiReplace(text, replacements):
+def multiReplace(data, replacements):
 	try:
 		replacements = iterItems(replacements)
 	except AttributeError:
 		# replacements is a list of tuples.
 		pass
 	for pattern, substitution in replacements:
-		text = text.replace(pattern, substitution)
-	return text
+		data = data.replace(pattern, substitution)
+	return data
+
+def escapeXML(data, isbytes=False):
+	return multiReplace(data, ESCAPE_XML_BYTES_ENTITIES if isbytes else ESCAPE_XML_STR_ENTITIES)
+
+def unescapeXML(data, isbytes=False):
+	return multiReplace(data, UNESCAPE_XML_BYTES_ENTITIES if isbytes else UNESCAPE_XML_STR_ENTITIES)
 
 def decodeBytes(data):
 	try:

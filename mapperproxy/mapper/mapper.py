@@ -7,26 +7,27 @@ try:
 except ImportError:
 	from queue import Queue
 import re
-from telnetlib import IAC
+from telnetlib import IAC, GA
 import threading
 from timeit import default_timer
 
 from .config import Config, config_lock
-from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX, XML_UNESCAPE_PATTERNS
+from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX
 from .world import Room, Exit, World
-from .utils import iterItems, decodeBytes, regexFuzzy, simplified, multiReplace
+from .utils import iterItems, decodeBytes, regexFuzzy, simplified, escapeXML, unescapeXML
 
 USER_DATA = 0
 MUD_DATA = 1
 
 class Mapper(threading.Thread, World):
-	def __init__(self, client, server, interface):
+	def __init__(self, client, server, outputFormat, interface):
 		threading.Thread.__init__(self)
 		self.name = "Mapper"
 		# Initialize the timer.
 		self.initTimer = default_timer()
 		self._client = client
 		self._server = server
+		self._outputFormat = outputFormat
 		self.queue = Queue()
 		self.autoMapping = False
 		self.autoUpdating = False
@@ -35,6 +36,7 @@ class Mapper(threading.Thread, World):
 		self.autoWalk = False
 		self.autoWalkDirections = []
 		self.lastPathFindQuery = ""
+		self.lastPrompt = ""
 		World.__init__(self, interface=interface)
 
 	def output(self, text):
@@ -42,7 +44,21 @@ class Mapper(threading.Thread, World):
 		return self.clientSend(text)
 
 	def clientSend(self, msg):
-		self._client.sendall(msg.encode("utf-8").replace(IAC, IAC+IAC) + b"\r\n")
+		if self._outputFormat == "raw":
+			if self.lastPrompt:
+				self._client.sendall("{}\r\n<prompt>{}</prompt>".format(escapeXML(msg), escapeXML(self.lastPrompt)).encode("utf-8").replace(IAC, IAC + IAC) + IAC + GA)
+			else:
+				self._client.sendall(escapeXML(msg).encode("utf-8").replace(IAC, IAC + IAC) + b"\r\n")
+		elif self._outputFormat == "tintin":
+			if self.lastPrompt:
+				self._client.sendall("{}\r\nPROMPT:{}:PROMPT".format(msg, self.lastPrompt).encode("utf-8").replace(IAC, IAC + IAC) + IAC + GA)
+			else:
+				self._client.sendall(b"\r\n" + msg.encode("utf-8").replace(IAC, IAC + IAC) + b"\r\n")
+		else:
+			if self.lastPrompt:
+				self._client.sendall("{}\r\n{}".format(msg, self.lastPrompt).encode("utf-8").replace(IAC, IAC + IAC) + IAC + GA)
+			else:
+				self._client.sendall(msg.encode("utf-8").replace(IAC, IAC + IAC) + b"\r\n")
 		return None
 
 	def serverSend(self, msg):
@@ -441,7 +457,7 @@ class Mapper(threading.Thread, World):
 				continue
 			# The data was from the mud server.
 			event, data = data
-			data = ANSI_COLOR_REGEX.sub("", decodeBytes(multiReplace(data, XML_UNESCAPE_PATTERNS)))
+			data = ANSI_COLOR_REGEX.sub("", unescapeXML(decodeBytes(data)))
 			if event == "iac_ga":
 				if self.isSynced:
 					if self.autoMapping and moved:
@@ -464,6 +480,7 @@ class Mapper(threading.Thread, World):
 				exits = None
 			elif event == "prompt":
 				prompt = data
+				self.lastPrompt = prompt
 			elif event == "movement":
 				movement = data
 				scouting = False
