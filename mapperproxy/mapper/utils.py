@@ -8,12 +8,12 @@ import os.path
 import re
 import subprocess
 import sys
-from telnetlib import IAC, DONT, DO, WONT, WILL, theNULL, SB, SE, GA
 import textwrap
 
 from . import terminalsize
 
 
+ANSI_COLOR_REGEX = re.compile(r"\x1b\[[\d;]+m")
 WHITE_SPACE_REGEX = re.compile(r"\s+", flags=re.UNICODE)
 ESCAPE_XML_STR_ENTITIES = (
 	("&", "&amp;"),
@@ -27,8 +27,14 @@ UNESCAPE_XML_STR_ENTITIES = tuple((second, first) for first, second in ESCAPE_XM
 ESCAPE_XML_BYTES_ENTITIES = tuple((first.encode("us-ascii"), second.encode("us-ascii")) for first, second in ESCAPE_XML_STR_ENTITIES)
 UNESCAPE_XML_BYTES_ENTITIES = tuple((second, first) for first, second in ESCAPE_XML_BYTES_ENTITIES)
 
-def simplified(text):
-	return WHITE_SPACE_REGEX.sub(" ", text).strip()
+def stripAnsi(data):
+	return ANSI_COLOR_REGEX.sub("", data)
+
+def simplified(data):
+	return WHITE_SPACE_REGEX.sub(" ", data).strip()
+
+def humanSort(listToSort):
+	return sorted(listToSort, key=lambda item: [int(text) if text.isdigit() else text for text in re.split(r"(\d+)", item, re.UNICODE)])
 
 def regexFuzzy(data):
 	if not data:

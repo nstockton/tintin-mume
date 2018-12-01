@@ -198,7 +198,7 @@ class EmulatedWorld(World):
 				self.output("\n".join(result))
 		elif command == "rinfo":
 			self.output("\n".join(self.rinfo(arguments)))
-		elif command in ("getlabel", "fdoor", "flabel", "fname", "fnote", "rnote", "ralign", "rlight", "rportable", "rridable", "ravoid", "rterrain", "rx", "ry", "rz", "rmobflags", "rloadflags", "exitflags", "doorflags", "secret", "rlink", "rdelete"):
+		elif command in ("getlabel", "fdoor", "fdynamic", "flabel", "fname", "fnote", "rnote", "ralign", "rlight", "rportable", "rridable", "ravoid", "rterrain", "rx", "ry", "rz", "rmobflags", "rloadflags", "exitflags", "doorflags", "secret", "rlink", "rdelete"):
 			self.output(getattr(self, command)(arguments))
 		elif command == "savemap":
 			self.saveRooms()
