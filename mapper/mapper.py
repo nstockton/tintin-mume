@@ -12,9 +12,9 @@ import threading
 from timeit import default_timer
 
 from .config import Config, config_lock
-from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, EXIT_TAGS_REGEX, ANSI_COLOR_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX
+from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, EXIT_TAGS_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX
 from .world import Room, Exit, World
-from .utils import iterItems, decodeBytes, regexFuzzy, simplified, escapeXML, unescapeXML
+from .utils import stripAnsi, iterItems, decodeBytes, regexFuzzy, simplified, escapeXML, unescapeXML
 
 USER_DATA = 0
 MUD_DATA = 1
@@ -114,6 +114,9 @@ class Mapper(threading.Thread, World):
 
 	def user_command_fdoor(self, *args):
 		self.clientSend(self.fdoor(*args))
+
+	def user_command_fdynamic(self, *args):
+		self.clientSend(self.fdynamic(*args))
 
 	def user_command_flabel(self, *args):
 		self.clientSend(self.flabel(*args))
@@ -457,7 +460,7 @@ class Mapper(threading.Thread, World):
 				continue
 			# The data was from the mud server.
 			event, data = data
-			data = ANSI_COLOR_REGEX.sub("", unescapeXML(decodeBytes(data)))
+			data = stripAnsi(unescapeXML(decodeBytes(data)))
 			if event == "iac_ga":
 				if self.isSynced:
 					if self.autoMapping and moved:

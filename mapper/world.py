@@ -411,6 +411,16 @@ class World(object):
 		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
 		return "\n".join("{vnum}, {name}".format(**vars(roomObj)) for roomObj in reversed(results[:20]))
 
+	def fdynamic(self, *args):
+		if not args or args[0] is None or not args[0].strip():
+			return "Usage: 'fdynamic [text]'."
+		results = self.searchRooms(dynamicDesc=args[0])
+		if not results:
+			return "Nothing found."
+		currentRoom = self.currentRoom
+		results.sort(key=lambda roomObj: roomObj.manhattanDistance(currentRoom))
+		return "\n".join("{vnum}, {name}:\n{dynamicDesc}".format(**vars(roomObj)) for roomObj in reversed(results[:20]))
+
 	def flabel(self, *args):
 		if not self.labels:
 			return "No labels defined."
