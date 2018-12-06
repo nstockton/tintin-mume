@@ -37,7 +37,7 @@ class EmulatedWorld(World):
 		"""Output text with utils.page."""
 		page(line for line in text.splitlines() if line.strip())
 
-	def look(self):
+	def user_command_partial_look(self, *args):
 		"""The 'look' command"""
 		self.output(self.currentRoom.name)
 		# If brief mode is disabled, output the room description
@@ -84,7 +84,7 @@ class EmulatedWorld(World):
 		if self.config.get("show_vnum", True):
 			self.output("Vnum: {0}".format(self.currentRoom.vnum))
 
-	def longExits(self):
+	def user_command_partial_exits(self, *args):
 		"""The exits command"""
 		self.output("Exits:")
 		if not self.currentRoom.exits:
@@ -101,6 +101,113 @@ class EmulatedWorld(World):
 			else:
 				exitLine.append("undefined")
 			self.output(" ".join(exitLine))
+
+	def user_command_brief(self, *args):
+		status = self.toggleSetting("brief")
+		self.output("Brief mode {}.".format("enabled" if status else "disabled"))
+
+	def user_command_doorflags(self, *args):
+		self.output(self.doorflags(*args))
+
+	def user_command_exitflags(self, *args):
+		self.output(self.exitflags(*args))
+
+	def user_command_fdoor(self, *args):
+		self.output(self.fdoor(*args))
+
+	def user_command_fdynamic(self, *args):
+		self.output(self.fdynamic(*args))
+
+	def user_command_flabel(self, *args):
+		self.output(self.flabel(*args))
+
+	def user_command_fname(self, *args):
+		self.output(self.fname(*args))
+
+	def user_command_fnote(self, *args):
+		self.output(self.fnote(*args))
+
+	def user_command_getlabel(self, *args):
+		self.output(self.getlabel(*args))
+
+	def user_command_path(self, *args):
+		if not args:
+			self.pathFind()
+		else:
+			match = RUN_DESTINATION_REGEX.match(*args)
+			destination = match.group("destination")
+			flags = match.group("flags")
+			if flags:
+				flags = flags.split("|")
+			else:
+				flags = None
+			result = self.pathFind(destination=destination, flags=flags)
+			if result is not None:
+				self.output(self.createSpeedWalk(result))
+
+	def user_command_ralign(self, *args):
+		self.output(self.ralign(*args))
+
+	def user_command_ravoid(self, *args):
+		self.output(self.ravoid(*args))
+
+	def user_command_rdelete(self, *args):
+		self.output(self.rdelete(*args))
+
+	def user_command_rinfo(self, *args):
+		self.output("\n".join(self.rinfo(*args)))
+
+	def user_command_rlabel(self, *args):
+		result = self.rlabel(*args)
+		if result:
+			self.output("\n".join(result))
+
+	def user_command_rlight(self, *args):
+		self.output(self.rlight(*args))
+
+	def user_command_rlink(self, *args):
+		self.output(self.rlink(*args))
+
+	def user_command_rloadflags(self, *args):
+		self.output(self.rloadflags(*args))
+
+	def user_command_rmobflags(self, *args):
+		self.output(self.rmobflags(*args))
+
+	def user_command_rnote(self, *args):
+		self.output(self.rnote(*args))
+
+	def user_command_rportable(self, *args):
+		self.output(self.rportable(*args))
+
+	def user_command_rridable(self, *args):
+		self.output(self.rridable(*args))
+
+	def user_command_rterrain(self, *args):
+		self.output(self.rterrain(*args))
+
+	def user_command_rx(self, *args):
+		self.output(self.rx(*args))
+
+	def user_command_ry(self, *args):
+		self.output(self.ry(*args))
+
+	def user_command_rz(self, *args):
+		self.output(self.rz(*args))
+
+	def user_command_savemap(self, *args):
+		self.saveRooms()
+
+	def user_command_secret(self, *args):
+		self.output(self.secret(*args))
+
+	def user_command_terrain(self, *args):
+		status = self.toggleSetting("use_terrain_symbols")
+		self.output("Terrain symbols in prompt {}.".format("enabled" if status else "disabled"))
+
+	def user_command_vnum(self, *args):
+		status = self.toggleSetting("show_vnum")
+		self.output("Show room vnum {}.".format("enabled" if status else "disabled"))
 
 	def move(self, text):
 		"""Move to a given vnum, label, or in a given direction"""
@@ -123,11 +230,11 @@ class EmulatedWorld(World):
 			return self.output("Error: no rooms in the database with vnum ({0}).".format(vnum))
 		self.currentRoom = self.rooms[vnum]
 		self.config["last_vnum"] = vnum
-		self.look()
+		self.user_command_partial_look()
 
 	def toggleSetting(self, setting):
 		"""Toggle configuration settings True/False"""
-		self.config[setting] = self.config.get(setting, True) == False
+		self.config[setting] = not self.config.get(setting, True)
 		return self.config[setting]
 
 	def loadConfig(self):
@@ -159,49 +266,19 @@ class EmulatedWorld(World):
 
 	def parseInput(self, userInput):
 		"""Parse the user input"""
+		userCommands = [func[len("user_command_"):].encode("us-ascii", "ignore") for func in dir(self) if not func.startswith("user_command_partial_") and func.startswith("user_command_")]
+		userCommandsPartial = [func[len("user_command_partial_"):].encode("us-ascii", "ignore") for func in dir(self) if func.startswith("user_command_partial_")]
 		match = re.match(r"^(?P<command>\S+)(?:\s+(?P<arguments>.*))?", userInput)
 		command = match.group("command")
 		arguments = match.group("arguments")
 		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(command))
 		if direction:
 			self.move(direction)
-		elif "look".startswith(command):
-			self.look()
-		elif "exits".startswith(command):
-			self.longExits()
-		elif command == "vnum":
-			status = self.toggleSetting("show_vnum")
-			self.output("Show room vnum {0}.".format("enabled" if status else "disabled"))
-		elif command == "brief":
-			status = self.toggleSetting("brief")
-			self.output("Brief mode {0}.".format("enabled" if status else "disabled"))
-		elif command == "terrain":
-			status = self.toggleSetting("use_terrain_symbols")
-			self.output("Terrain symbols in prompt {0}.".format("enabled" if status else "disabled"))
-		elif command == "path":
-			if not arguments:
-				self.pathFind()
-			else:
-				match = RUN_DESTINATION_REGEX.match(arguments)
-				destination = match.group("destination")
-				flags = match.group("flags")
-				if flags:
-					flags = flags.split("|")
-				else:
-					flags = None
-				result = self.pathFind(destination=destination, flags=flags)
-				if result is not None:
-					self.output(self.createSpeedWalk(result))
-		elif command == "rlabel":
-			result = self.rlabel(arguments)
-			if result:
-				self.output("\n".join(result))
-		elif command == "rinfo":
-			self.output("\n".join(self.rinfo(arguments)))
-		elif command in ("getlabel", "fdoor", "fdynamic", "flabel", "fname", "fnote", "rnote", "ralign", "rlight", "rportable", "rridable", "ravoid", "rterrain", "rx", "ry", "rz", "rmobflags", "rloadflags", "exitflags", "doorflags", "secret", "rlink", "rdelete"):
-			self.output(getattr(self, command)(arguments))
-		elif command == "savemap":
-			self.saveRooms()
+		elif [method for method in userCommandsPartial if method.startswith(command)]:
+			completed = [method for method in userCommandsPartial if method.startswith(command)][0]
+			getattr(self, "user_command_partial_{}".format(completed))(arguments)
+		elif command in userCommands:
+			getattr(self, "user_command_{}".format(command))(arguments)
 		elif command.isdigit() or command in self.labels:
 			self.move(command)
 		else:

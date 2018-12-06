@@ -344,13 +344,16 @@ def main(outputFormat, interface):
 			print("Unable to find pyglet. Disabling the GUI")
 			interface = "text"
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	proxySocket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 	proxySocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	proxySocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	proxySocket.bind(("", 4000))
 	proxySocket.listen(1)
 	clientConnection, proxyAddress = proxySocket.accept()
 	clientConnection.settimeout(1.0)
 	serverConnection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serverConnection.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+	serverConnection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 	if ssl is not None:
 		serverConnection = ssl.wrap_socket(serverConnection, cert_reqs=ssl.CERT_REQUIRED, ca_certs="cacert.pem", ssl_version=ssl.PROTOCOL_TLS)
 	try:
