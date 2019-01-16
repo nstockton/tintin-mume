@@ -1,7 +1,7 @@
 # mapperproxy mume
 A mapper proxy for playing [MUME](http://mume.org "MUME Official Site") targeted towards the needs of blind players. It is entirely controlled by plain text commands, and offers some facilities such as pathfinding and room finding. It also comes with a high contrast GUI for visually impaired players, and a tiled one for sighted players.
 
-![screenshot of the sighted GUI](tiles/screenshot.png?raw=true "screenshot of the sighted GUI")
+![screenshot of the sighted GUI](tiles/screenshot-multi.png?raw=true "screenshot of the sighted GUI")
 
 ## License And Credits
 Mapper Proxy is licensed under the terms of the [Mozilla Public License, version 2.0.](https://www.mozilla.org/en-US/MPL/2.0/ "MPL2 official Site")
