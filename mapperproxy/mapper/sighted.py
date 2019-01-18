@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 #logger.setLevel('INFO')
 
-FPS = 20
+FPS = 40
 
 TILESDIR = getDirectoryPath("tiles")
 
