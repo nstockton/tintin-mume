@@ -5,7 +5,7 @@ COLOR=multi
 #COLOR=gold
 
 # Uncomment your desired player tile
-PLAYER=elf
+PLAYER=helf-light
 #PLAYER=cleric
 #PLAYER=warrior
 #PLAYER=orc
@@ -17,7 +17,8 @@ hill indoor key mountain quest \
 random rapid rent road shop smob swamp \
 treasure tunnel undefined underwater \
 walleast wallnorth wallsouth wallwest \
-water weapon elf cleric warrior orc troll
+water weapon elf cleric warrior orc troll \
+helf-light helf-dark
 
 all: $(TILES:%=%.png) player.png
 
