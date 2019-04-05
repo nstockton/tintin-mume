@@ -11,11 +11,74 @@ from telnetlib import IAC, GA
 import threading
 from timeit import default_timer
 
+from . import roomdata
 from .config import Config, config_lock
-from .constants import DIRECTIONS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, EXIT_TAGS_REGEX, MOVEMENT_FORCED_REGEX, MOVEMENT_PREVENTED_REGEX, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, PROMPT_REGEX
-from .world import Room, Exit, World
+from .world import DIRECTIONS, LIGHT_SYMBOLS, REVERSE_DIRECTIONS, RUN_DESTINATION_REGEX, TERRAIN_SYMBOLS, World
 from .utils import stripAnsi, iterItems, decodeBytes, regexFuzzy, simplified, escapeXML, unescapeXML
 
+EXIT_TAGS_REGEX = re.compile(r"(?P<door>[\(\[\#]?)(?P<road>[=-]?)(?P<climb>[/\\]?)(?P<portal>[\{]?)(?P<direction>%s)" % "|".join(DIRECTIONS))
+MOVEMENT_FORCED_REGEX = re.compile("|".join([
+			r"You feel confused and move along randomly\.\.\.",
+			r"Suddenly an explosion of ancient rhymes makes the space collapse around you\!",
+			r"The pain stops\, your vision clears\, and you realize that you are elsewhere\.",
+			r"A guard leads you out of the house\.",
+			r"You leave the ferry\.",
+			r"You reached the riverbank\.",
+			r"You stop moving towards the (?:left|right) bank and drift downstream\.",
+			r"You are borne along by a strong current\.",
+			r"You are swept away by the current\.",
+			r"You are swept away by the powerful current of water\.",
+			r"You board the ferry\.",
+			r"You are dead\! Sorry\.\.\.",
+			r"With a jerk\, the basket starts gliding down the rope towards the platform\.",
+			r"#You cannot control your mount on the slanted and unstable surface\! You begin to slide to the north\, and plunge toward the water below\!",
+			r"The current pulls you faster\. Suddenly\, you are sucked downwards into darkness\!",
+			r"You are washed blindly over the rocks\, and plummet sickeningly downwards\.\.\.",
+			r"Oops\! You walk off the bridge and fall into the rushing water below\!",
+			r"Holding your breath and with closed eyes\, you are squeezed below the surface of the water\.",
+			r"You tighten your grip as (:a Great Eagle|Gwaihir the Windlord) starts to descend fast\.",
+			r"The trees confuse you\, making you wander around in circles\.",
+			r"Sarion helps you outside\.",
+			r"Stepping on the lizard corpses\, you use some depressions in the wall for support\, push the muddy ceiling apart and climb out of the cave\."
+		]
+	)
+)
+MOVEMENT_PREVENTED_REGEX = re.compile("^%s$" % "|".join([
+			r"The \w+ seem[s]? to be closed\.",
+			r"It seems to be locked\.",
+			r"You cannot ride there\.",
+			r"Your boat cannot enter this place\.",
+			r"A guard steps in front of you\.",
+			r"The clerk bars your way\.",
+			r"You cannot go that way\.\.\.",
+			r"Alas\, you cannot go that way\.\.\.",
+			r"You need to swim to go there\.",
+			r"You failed swimming there\.",
+			r"You failed to climb there and fall down\, hurting yourself\.",
+			r"Your mount cannot climb the tree\!",
+			r"No way\! You are fighting for your life\!",
+			r"In your dreams\, or what\?",
+			r"You are too exhausted\.",
+			r"You unsuccessfully try to break through the ice\.",
+			r"Your mount refuses to follow your orders\!",
+			r"You are too exhausted to ride\.",
+			r"You can\'t go into deep water\!",
+			r"You don\'t control your mount\!",
+			r"Your mount is too sensible to attempt such a feat\.",
+			r"Oops\! You cannot go there riding\!",
+			r"A (?:pony|dales-pony|horse|warhorse|pack horse|trained horse|horse of the Rohirrim|brown donkey|mountain mule|hungry warg|brown wolf)(?: \(\w+\))? (?:is too exhausted|doesn't want you riding (?:him|her|it) anymore)\.",
+			r"You\'d better be swimming if you want to dive underwater\.",
+			r"You need to climb to go there\.",
+			r"You cannot climb there\.",
+			r"If you still want to try\, you must \'climb\' there\.",
+			r".+ (?:prevents|keeps) you from going (?:north|south|east|west|up|down|upstairs|downstairs|past (?:him|her|it))\.",
+			r"Nah\.\.\. You feel too relaxed to do that\.",
+			r"Maybe you should get on your feet first\?",
+			r"Not from your present position\!"
+		]
+	)
+)
+PROMPT_REGEX = re.compile(r"^(?P<light>[@*!\)o]?)(?P<terrain>[\#\(\[\+\.%fO~UW:=<]?)(?P<weather>[*'\"~=-]{0,2})\s*(?P<movementFlags>[RrSsCcW]{0,4})[^\>]*\>$")
 USER_DATA = 0
 MUD_DATA = 1
 
@@ -258,19 +321,7 @@ class Mapper(threading.Thread, World):
 		self.clientSend(self.stopRun())
 
 	def user_command_path(self, *args):
-		if not args or not args[0]:
-			return self.clientSend("Usage: run [label|vnum]")
-		argString = args[0].strip()
-		match = RUN_DESTINATION_REGEX.match(argString)
-		destination = match.group("destination")
-		flags = match.group("flags")
-		if flags:
-			flags = flags.split("|")
-		else:
-			flags = None
-		result = self.pathFind(destination=destination, flags=flags)
-		if result is not None:
-			self.clientSend(self.createSpeedWalk(result))
+		self.clientSend(self.path(*args))
 
 	def user_command_sync(self, *args):
 		if not args or not args[0]:
@@ -372,7 +423,7 @@ class Mapper(threading.Thread, World):
 			pass
 		try:
 			terrain = TERRAIN_SYMBOLS[promptDict["terrain"]]
-			if self.currentRoom.terrain not in (terrain, "random", "death"):
+			if self.currentRoom.terrain not in (terrain, "deathtrap"):
 				output.append(self.rterrain(terrain))
 		except KeyError:
 			pass
@@ -426,7 +477,7 @@ class Mapper(threading.Thread, World):
 
 	def addNewRoom(self, movement, name, description, dynamic):
 		vnum = self.getNewVnum()
-		newRoom = Room(vnum)
+		newRoom = roomdata.objects.Room(vnum)
 		newRoom.name = name
 		newRoom.desc = description
 		newRoom.dynamicDesc = dynamic
