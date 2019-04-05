@@ -19,12 +19,29 @@ try:
 except ImportError:
 	from queue import Empty as QueueEmpty
 
-from .config import Config, config_lock
-from .constants import DIRECTIONS, TERRAIN_COLORS
-from .utils import iterItems, iterRange
+from ..config import Config, config_lock
+from ..world import DIRECTIONS
+from ..utils import iterItems, iterRange
 from .vec2d import Vec2d
 
 logger = logging.getLogger(__name__)
+TERRAIN_COLORS = {
+	"cavern": (153, 50, 204, 255),
+	"city": (190, 190, 190, 255),
+	"indoors": (186, 85, 211, 255),
+	"tunnel": (153, 50, 204, 255),
+	"road": (255, 255, 255, 255),
+	"field": (124, 252, 0, 255),
+	"brush": (127, 255, 0, 255),
+	"forest": (8, 128, 0, 255),
+	"hills": (139, 69, 19 ,255),
+	"shallow": (218, 120, 245, 255),
+	"mountains": (165, 42, 42, 255),
+	"water": (32, 64, 192, 255),
+	"rapids": (32, 64, 192, 255),
+	"underwater": (48, 8, 120, 255),
+	"unknown": (24, 16, 32, 255)
+}
 DIRECTIONS_2D = frozenset(DIRECTIONS[:-2])
 FPS = 30
 KEYS = {

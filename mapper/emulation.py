@@ -10,9 +10,8 @@ import os.path
 import re
 import threading
 
-from .world import World
+from .world import DIRECTIONS, TERRAIN_SYMBOLS, World
 from .config import Config, config_lock
-from .constants import DIRECTIONS, RUN_DESTINATION_REGEX, TERRAIN_SYMBOLS
 from .utils import page, iterItems, getDirectoryPath
 
 class EmulatedWorld(World):
@@ -131,19 +130,7 @@ class EmulatedWorld(World):
 		self.output(self.getlabel(*args))
 
 	def user_command_path(self, *args):
-		if not args:
-			self.pathFind()
-		else:
-			match = RUN_DESTINATION_REGEX.match(*args)
-			destination = match.group("destination")
-			flags = match.group("flags")
-			if flags:
-				flags = flags.split("|")
-			else:
-				flags = None
-			result = self.pathFind(destination=destination, flags=flags)
-			if result is not None:
-				self.output(self.createSpeedWalk(result))
+		self.output(self.path(*args))
 
 	def user_command_ralign(self, *args):
 		self.output(self.ralign(*args))
@@ -266,8 +253,8 @@ class EmulatedWorld(World):
 
 	def parseInput(self, userInput):
 		"""Parse the user input"""
-		userCommands = [func[len("user_command_"):].encode("us-ascii", "ignore") for func in dir(self) if not func.startswith("user_command_partial_") and func.startswith("user_command_")]
-		userCommandsPartial = [func[len("user_command_partial_"):].encode("us-ascii", "ignore") for func in dir(self) if func.startswith("user_command_partial_")]
+		userCommands = [func[len("user_command_"):] for func in dir(self) if not func.startswith("user_command_partial_") and func.startswith("user_command_")]
+		userCommandsPartial = [func[len("user_command_partial_"):] for func in dir(self) if func.startswith("user_command_partial_")]
 		match = re.match(r"^(?P<command>\S+)(?:\s+(?P<arguments>.*))?", userInput)
 		command = match.group("command")
 		arguments = match.group("arguments")

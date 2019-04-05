@@ -4,11 +4,8 @@
 
 from __future__ import print_function
 
-import codecs
 import heapq
 import itertools
-import json
-import os.path
 try:
 	from Queue import Queue
 except ImportError:
@@ -16,59 +13,60 @@ except ImportError:
 import re
 import threading
 
-from .constants import IS_PYTHON_2, DIRECTIONS, MAP_FILE, SAMPLE_MAP_FILE, LABELS_FILE, SAMPLE_LABELS_FILE, AVOID_DYNAMIC_DESC_REGEX, LEAD_BEFORE_ENTERING_VNUMS, TERRAIN_COSTS, TERRAIN_SYMBOLS, LIGHT_SYMBOLS, VALID_MOB_FLAGS, VALID_LOAD_FLAGS, VALID_EXIT_FLAGS, VALID_DOOR_FLAGS, DIRECTION_COORDINATES, REVERSE_DIRECTIONS
-from .utils import iterItems, getDirectoryPath, regexFuzzy
+from . import roomdata
+from .utils import iterItems, regexFuzzy
 
 
-class Room(object):
-	def __init__(self, vnum):
-		self.vnum = vnum
-		self.name = ""
-		self.desc = ""
-		self.dynamicDesc = ""
-		self.note = ""
-		self.terrain = "undefined"
-		self.cost = TERRAIN_COSTS["undefined"]
-		self.light = "undefined"
-		self.align = "undefined"
-		self.portable = "undefined"
-		self.ridable = "undefined"
-		self.avoid = False
-		self.mobFlags = set()
-		self.loadFlags = set()
-		self.x = 0
-		self.y = 0
-		self.z = 0
-		self.exits = {}
-
-	def __lt__(self, other):
-		# Unlike in Python 2 where most objects are sortable by default, our Room class isn't automatically sortable in Python 3.
-		# If we don't override this method, the path finder will throw an exception in Python 3 because heapq.heappush requires that any object passed to it be sortable.
-		# We'll return False because we want heapq.heappush to sort the tuples of movement cost and room object by the first item in the tuple (room cost), and the order of rooms with the same movement cost is irrelevant.
-		return False
-
-	def calculateCost(self):
-		try:
-			self.cost = TERRAIN_COSTS[self.terrain]
-		except KeyError:
-			self.cost = TERRAIN_COSTS["undefined"]
-		if self.avoid or AVOID_DYNAMIC_DESC_REGEX.search(self.dynamicDesc):
-			self.cost += 1000.0
-		if self.ridable == "notridable":
-			self.cost += 5.0
-
-	def manhattanDistance(self, destination):
-		return abs(destination.x - self.x) + abs(destination.y - self.y) + abs(destination.z - self.z)
-
-
-class Exit(object):
-	def __init__(self):
-		self.direction = None
-		self.vnum = None
-		self.to = "undefined"
-		self.exitFlags = set(["exit"])
-		self.door = ""
-		self.doorFlags = set()
+DIRECTIONS = ["north", "east", "south", "west", "up", "down"]
+DIRECTION_COORDINATES = {
+	"north": (0, 1, 0),
+	"south": (0, -1, 0),
+	"west": (-1, 0, 0),
+	"east": (1, 0, 0),
+	"up": (0, 0, 1),
+	"down": (0, 0, -1)
+}
+LEAD_BEFORE_ENTERING_VNUMS = [
+	"196",
+	"3473",
+	"3474",
+	"12138",
+	"12637"
+]
+LIGHT_SYMBOLS = {
+	"@": "lit",
+	"*": "lit",
+	"!": "undefined",
+	")": "lit",
+	"o": "dark"
+}
+REVERSE_DIRECTIONS = {
+	"north": "south",
+	"south": "north",
+	"east": "west",
+	"west": "east",
+	"up": "down",
+	"down": "up"
+}
+RUN_DESTINATION_REGEX = re.compile(r"^(?P<destination>.+?)(?:\s+(?P<flags>\S+))?$")
+TERRAIN_SYMBOLS = {
+	":": "brush",
+	"O": "cavern",
+	"#": "city",
+	"!": "deathtrap",
+	".": "field",
+	"f": "forest",
+	"(": "hills",
+	"[": "indoors",
+	"<": "mountains",
+	"W": "rapids",
+	"+": "road",
+	"%": "shallow",
+	"=": "tunnel",
+	"?": "undefined",
+	"U": "underwater",
+	"~": "water"
+}
 
 
 class World(object):
@@ -81,9 +79,9 @@ class World(object):
 			self._gui_queue = Queue()
 			self._gui_queue_lock = threading.Lock()
 			if interface == "hc":
-				from .hc import Window
+				from .gui.hc import Window
 			elif interface == "sighted":
-				from .sighted import Window
+				from .gui.sighted import Window
 			self.window=Window(self)
 		self._currentRoom = None
 		self.loadRooms()
@@ -115,41 +113,48 @@ class World(object):
 		return None
 
 	def loadRooms(self):
-		self.output("Loading the JSon database file.")
-		mapDirectory = getDirectoryPath("maps")
-		mapFile = os.path.join(mapDirectory, MAP_FILE)
-		sampleMapFile = os.path.join(mapDirectory, SAMPLE_MAP_FILE)
-		if os.path.exists(mapFile):
-			if not os.path.isdir(mapFile):
-				path = mapFile
-			else:
-				path = None
-				self.output("Error: '{0}' is a directory, not a file.".format(mapFile))
-		elif os.path.exists(sampleMapFile):
-			if not os.path.isdir(sampleMapFile):
-				path = sampleMapFile
-			else:
-				path = None
-				self.output("Error: '{0}' is a directory, not a file.".format(sampleMapFile))
-		else:
-			return self.output("Error: neither '{0}' nor '{1}' can be found.".format(mapFile, sampleMapFile))
-		try:
-			with codecs.open(path, "rb", encoding="utf-8") as fileObj:
-				db = json.load(fileObj)
-		except IOError as e:
-			self.rooms = {}
-			return self.output("{0}: '{1}'".format(e.strerror, e.filename))
-		except ValueError as e:
-			self.rooms = {}
-			return self.output("Corrupted map database file.")
+		self.output("Loading the database file.")
+		errors, db = roomdata.database.loadRooms()
+		if db is None:
+			return self.output(errors)
 		self.output("Creating room objects.")
+		terrainReplacements = {
+			"random": "undefined",
+			"death": "deathtrap",
+			"shallowwater": "shallow"
+		}
+		mobFlagReplacements = {
+			"any": "passive_mob",
+			"smob": "aggressive_mob",
+			"quest": "quest_mob",
+			"scoutguild": "scout_guild",
+			"mageguild": "mage_guild",
+			"clericguild": "cleric_guild",
+			"warriorguild": "warrior_guild",
+			"rangerguild": "ranger_guild",
+			"armourshop": "armour_shop",
+			"foodshop": "food_shop",
+			"petshop": "pet_shop",
+			"weaponshop": "weapon_shop"
+		}
+		loadFlagReplacements = {
+			"packhorse": "pack_horse",
+			"trainedhorse": "trained_horse"
+		}
+		doorFlagReplacements = {
+			"noblock": "no_block",
+			"nobreak": "no_break",
+			"nopick": "no_pick",
+			"needkey": "need_key"
+		}
 		for vnum, roomDict in iterItems(db):
-			newRoom = Room(vnum)
+			newRoom = roomdata.objects.Room(vnum)
 			newRoom.name = roomDict["name"]
 			newRoom.desc = roomDict["desc"]
 			newRoom.dynamicDesc = roomDict["dynamicDesc"]
 			newRoom.note = roomDict["note"]
-			newRoom.terrain = roomDict["terrain"]
+			terrain = roomDict["terrain"]
+			newRoom.terrain = terrain if terrain not in terrainReplacements else terrainReplacements[terrain]
 			newRoom.light = roomDict["light"]
 			newRoom.align = roomDict["align"]
 			newRoom.portable = roomDict["portable"]
@@ -158,8 +163,8 @@ class World(object):
 				newRoom.avoid = roomDict["avoid"]
 			except KeyError:
 				pass
-			newRoom.mobFlags = set(roomDict["mobFlags"])
-			newRoom.loadFlags = set(roomDict["loadFlags"])
+			newRoom.mobFlags = {flag if flag not in mobFlagReplacements else mobFlagReplacements[flag] for flag in roomDict["mobFlags"]}
+			newRoom.loadFlags = {flag if flag not in loadFlagReplacements else loadFlagReplacements[flag] for flag in roomDict["loadFlags"]}
 			newRoom.x = roomDict["x"]
 			newRoom.y = roomDict["y"]
 			newRoom.z = roomDict["z"]
@@ -167,7 +172,7 @@ class World(object):
 			for direction, exitDict in iterItems(roomDict["exits"]):
 				newExit = self.getNewExit(direction, exitDict["to"], vnum)
 				newExit.exitFlags = set(exitDict["exitFlags"])
-				newExit.doorFlags = set(exitDict["doorFlags"])
+				newExit.doorFlags = {flag if flag not in doorFlagReplacements else doorFlagReplacements[flag] for flag in exitDict["doorFlags"]}
 				newExit.door = exitDict["door"]
 				newRoom.exits[direction] = newExit
 			self.rooms[vnum] = newRoom
@@ -175,32 +180,6 @@ class World(object):
 			del roomDict
 		self.currentRoom = self.rooms["0"]
 		self.output("Map database loaded.")
-
-	def loadLabels(self):
-		def getLabels(fileName):
-			dataDirectory = getDirectoryPath("data")
-			fileName = os.path.join(dataDirectory, fileName)
-			if os.path.exists(fileName):
-				if not os.path.isdir(fileName):
-					try:
-						with codecs.open(fileName, "rb", encoding="utf-8") as fileObj:
-							return json.load(fileObj)
-					except IOError as e:
-						self.output("{0}: '{1}'".format(e.strerror, e.filename))
-						return {}
-					except ValueError as e:
-						self.output("Corrupted labels database file: {0}".format(fileName))
-						return {}
-				else:
-					self.output("Error: '{0}' is a directory, not a file.".format(fileName))
-					return {}
-			else:
-				return {}
-		self.labels.update(getLabels(SAMPLE_LABELS_FILE))
-		self.labels.update(getLabels(LABELS_FILE))
-		orphans = [label for label, vnum in iterItems(self.labels) if vnum not in self.rooms]
-		for label in orphans:
-			del self.labels[label]
 
 	def saveRooms(self):
 		self.output("Creating dict from room objects.")
@@ -231,21 +210,24 @@ class World(object):
 				newExit["to"] = exitObj.to
 				newRoom["exits"][direction] = newExit
 			db[vnum] = newRoom
-		self.output("Saving the database in JSon format.")
-		mapDirectory = getDirectoryPath("maps")
-		mapFile = os.path.join(mapDirectory, MAP_FILE)
-		with codecs.open(mapFile, "wb", encoding="utf-8") as fileObj:
-			fileObj.write(json.dumps(db, sort_keys=True, indent=2, separators=(",", ": ")))
+		self.output("Saving the database.")
+		roomdata.database.dumpRooms(db)
 		self.output("Map Database saved.")
 
+	def loadLabels(self):
+		errors, labels = roomdata.database.loadLabels()
+		if labels is None:
+			return self.output(errors)
+		self.labels.update(labels)
+		orphans = [label for label, vnum in iterItems(self.labels) if vnum not in self.rooms]
+		for label in orphans:
+			del self.labels[label]
+
 	def saveLabels(self):
-		dataDirectory = getDirectoryPath("data")
-		labelsFile = os.path.join(dataDirectory, LABELS_FILE)
-		with codecs.open(labelsFile, "wb", encoding="utf-8") as fileObj:
-			json.dump(self.labels, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
+		roomdata.database.dumpLabels(self.labels)
 
 	def getNewExit(self, direction, to="undefined", parent=None):
-		newExit = Exit()
+		newExit = roomdata.objects.Exit()
 		newExit.direction = direction
 		newExit.to = to
 		newExit.vnum = self.currentRoom.vnum if parent is None else parent
@@ -456,8 +438,19 @@ class World(object):
 
 	def rnote(self, *args):
 		if not args or args[0] is None or not args[0].strip():
-			return "Room note set to '%s'. Use 'rnote [text]' to change it." % self.currentRoom.note
-		self.currentRoom.note = args[0].strip()
+			return "Room note set to '%s'. Use 'rnote [text]' to change it, 'rnote -a [text]' to append to it, or 'rnote -r' to remove it." % self.currentRoom.note
+		note = args[0].strip()
+		if note.lower().startswith("-r"):
+			if len(note) > 2:
+				return "Error: '-r' requires no extra arguments. Change aborted."
+			self.currentRoom.note = ""
+			return "Note removed."
+		elif note.lower().startswith("-a"):
+			if len(note) == 2:
+				return "Error: '-a' requires text to be appended. Change aborted."
+			self.currentRoom.note = "{} {}".format(self.currentRoom.note.strip(), note[2:].strip())
+		else:
+			self.currentRoom.note = note
 		return "Room note now set to '%s'." % self.currentRoom.note
 
 	def ralign(self, *args):
@@ -501,7 +494,7 @@ class World(object):
 
 	def rterrain(self, *args):
 		if not args or not args[0] or args[0].strip() not in TERRAIN_SYMBOLS and args[0].strip().lower() not in TERRAIN_SYMBOLS.values():
-			return "Room terrain set to '%s'. Use 'rterrain [%s | undefined]' to change it." % (self.currentRoom.terrain, " | ".join(TERRAIN_SYMBOLS.values()))
+			return "Room terrain set to '%s'. Use 'rterrain [%s]' to change it." % (self.currentRoom.terrain, " | ".join(sorted(TERRAIN_SYMBOLS.values())))
 		try:
 			self.currentRoom.terrain = TERRAIN_SYMBOLS[args[0].strip()]
 		except KeyError:
@@ -541,11 +534,11 @@ class World(object):
 		return "Room coordinate Z set to '%s'. Use 'rz [digit]' to change it." % self.currentRoom.z
 
 	def rmobflags(self, *args):
-		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_MOB_FLAGS)))
+		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(roomdata.objects.VALID_MOB_FLAGS)))
 		try:
 			matchDict = regex.match(args[0].strip().lower()).groupdict()
 		except (NameError, IndexError, AttributeError):
-			return "Mob flags set to '%s'. Use 'rmobflags [add | remove] [%s]' to change them." % (", ".join(self.currentRoom.mobFlags), " | ".join(VALID_MOB_FLAGS))
+			return "Mob flags set to '%s'. Use 'rmobflags [add | remove] [%s]' to change them." % (", ".join(self.currentRoom.mobFlags), " | ".join(roomdata.objects.VALID_MOB_FLAGS))
 		if "remove".startswith(matchDict["mode"]):
 			if matchDict["flag"] in self.currentRoom.mobFlags:
 				self.currentRoom.mobFlags.remove(matchDict["flag"])
@@ -560,11 +553,11 @@ class World(object):
 				return "Mob flag '%s' added." % matchDict["flag"]
 
 	def rloadflags(self, *args):
-		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_LOAD_FLAGS)))
+		regex = re.compile(r"^(?P<mode>%s|%s)\s+(?P<flag>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(roomdata.objects.VALID_LOAD_FLAGS)))
 		try:
 			matchDict = regex.match(args[0].strip().lower()).groupdict()
 		except (NameError, IndexError, AttributeError):
-			return "Load flags set to '%s'. Use 'rloadflags [add | remove] [%s]' to change them." % (", ".join(self.currentRoom.loadFlags), " | ".join(VALID_LOAD_FLAGS))
+			return "Load flags set to '%s'. Use 'rloadflags [add | remove] [%s]' to change them." % (", ".join(self.currentRoom.loadFlags), " | ".join(roomdata.objects.VALID_LOAD_FLAGS))
 		if "remove".startswith(matchDict["mode"]):
 			if matchDict["flag"] in self.currentRoom.loadFlags:
 				self.currentRoom.loadFlags.remove(matchDict["flag"])
@@ -579,11 +572,11 @@ class World(object):
 				return "Load flag '%s' added." % matchDict["flag"]
 
 	def exitflags(self, *args):
-		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<flag>%s)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_EXIT_FLAGS), regexFuzzy(DIRECTIONS)))
+		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<flag>%s)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(roomdata.objects.VALID_EXIT_FLAGS), regexFuzzy(DIRECTIONS)))
 		try:
 			matchDict = regex.match(args[0].strip().lower()).groupdict()
 		except (NameError, IndexError, AttributeError):
-			return "Syntax: 'exitflags [add | remove] [%s] [%s]'." % (" | ".join(VALID_EXIT_FLAGS), " | ".join(DIRECTIONS))
+			return "Syntax: 'exitflags [add | remove] [%s] [%s]'." % (" | ".join(roomdata.objects.VALID_EXIT_FLAGS), " | ".join(DIRECTIONS))
 		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
 		if direction not in self.currentRoom.exits:
 			return "Exit %s does not exist." % direction
@@ -603,11 +596,11 @@ class World(object):
 				return "Exit flag '%s' in direction '%s' added." % (matchDict["flag"], direction)
 
 	def doorflags(self, *args):
-		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<flag>%s)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(VALID_DOOR_FLAGS), regexFuzzy(DIRECTIONS)))
+		regex = re.compile(r"^((?P<mode>%s|%s)\s+)?((?P<flag>%s)\s+)?(?P<direction>%s)" % (regexFuzzy("add"), regexFuzzy("remove"), "|".join(roomdata.objects.VALID_DOOR_FLAGS), regexFuzzy(DIRECTIONS)))
 		try:
 			matchDict = regex.match(args[0].strip().lower()).groupdict()
 		except (NameError, IndexError, AttributeError):
-			return "Syntax: 'doorflags [add | remove] [%s] [%s]'." % (" | ".join(VALID_DOOR_FLAGS), " | ".join(DIRECTIONS))
+			return "Syntax: 'doorflags [add | remove] [%s] [%s]'." % (" | ".join(roomdata.objects.VALID_DOOR_FLAGS), " | ".join(DIRECTIONS))
 		direction = "".join(dir for dir in DIRECTIONS if dir.startswith(matchDict["direction"]))
 		if direction not in self.currentRoom.exits:
 			return "Exit %s does not exist." % direction
@@ -824,7 +817,21 @@ class World(object):
 			result.extend(compressDirections(directionsBuffer))
 		return ", ".join(result)
 
-	def pathFind(self, origin=None, destination=None, flags=[]):
+	def path(self, *args):
+		if not args or not args[0]:
+			return "Usage: path [label|vnum]"
+		match = RUN_DESTINATION_REGEX.match(args[0].strip())
+		destination = match.group("destination")
+		flags = match.group("flags")
+		if flags:
+			flags = flags.split("|")
+		else:
+			flags = None
+		result = self.pathFind(destination=destination, flags=flags)
+		if result is not None:
+			return self.createSpeedWalk(result)
+
+	def pathFind(self, origin=None, destination=None, flags=None):
 		"""Find the path"""
 		if not origin:
 			origin = self.currentRoom
@@ -839,7 +846,7 @@ class World(object):
 			self.output("You are already there!")
 			return []
 		if flags:
-			avoidTerrains = frozenset(terrain for terrain in TERRAIN_COSTS if "no{0}".format(terrain) in flags)
+			avoidTerrains = frozenset(terrain for terrain in roomdata.objects.TERRAIN_COSTS if "no{0}".format(terrain) in flags)
 		else:
 			avoidTerrains = frozenset()
 		ignoreVnums = frozenset(("undefined", "death"))
