@@ -67,7 +67,8 @@ VALID_LOAD_FLAGS = [
 	"white_word",
 	"dark_word",
 	"equipment",
-	"coach"
+	"coach",
+	"ferry"
 ]
 VALID_EXIT_FLAGS = [
 	"exit",

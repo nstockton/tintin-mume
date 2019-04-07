@@ -321,7 +321,9 @@ class Mapper(threading.Thread, World):
 		self.clientSend(self.stopRun())
 
 	def user_command_path(self, *args):
-		self.clientSend(self.path(*args))
+		result = self.path(*args)
+		if result is not None:
+			self.clientSend(result)
 
 	def user_command_sync(self, *args):
 		if not args or not args[0]:
