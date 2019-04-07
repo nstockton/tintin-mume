@@ -130,7 +130,9 @@ class EmulatedWorld(World):
 		self.output(self.getlabel(*args))
 
 	def user_command_path(self, *args):
-		self.output(self.path(*args))
+		result = self.path(*args)
+		if result is not None:
+			self.output(result)
 
 	def user_command_ralign(self, *args):
 		self.output(self.ralign(*args))
