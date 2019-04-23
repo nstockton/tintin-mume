@@ -367,6 +367,16 @@ class Window(pyglet.window.Window):
 			except AttributeError:
 				logger.error("Invalid key assignment for key {}. No such function {}.".format(key, funcname))
 
+	def on_mouse_press(self, x, y, buttons, modifiers):
+		for vnum, item in iterItems(self.visible_rooms):
+			vl, room, cp = item
+			if int(cp.x) // self.size == int(x) // self.size and int(cp.y) // self.size == int(y) // self.size:
+				if buttons == pyglet.window.mouse.LEFT and vnum in self.world.rooms:
+					self.world.currentRoom = self.world.rooms[vnum]
+					self.world.output("Current room set to '{}' with VNum '{}'".format(self.world.currentRoom.name, vnum))
+				elif buttons == pyglet.window.mouse.RIGHT:
+					self.world.output("Vnum: {}".format(vnum))
+
 	def do_toggle_blink(self, sym, mod):
 		self.blink = not self.blink
 		self.say("Blinking {}".format({True: "enabled", False: "disabled"}[self.blink]))
