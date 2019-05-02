@@ -357,7 +357,7 @@ def main(outputFormat, interface):
 	if ssl is not None:
 		serverConnection = ssl.wrap_socket(serverConnection, cert_reqs=ssl.CERT_REQUIRED, ca_certs="cacert.pem", ssl_version=ssl.PROTOCOL_TLS)
 	try:
-		serverConnection.connect(("193.134.218.98", 443))
+		serverConnection.connect(("193.134.218.98", 4242))
 
 	except TimeoutError:
 		try:
