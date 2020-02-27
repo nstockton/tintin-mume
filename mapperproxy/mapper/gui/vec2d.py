@@ -21,13 +21,19 @@
 # SOFTWARE.
 # ----------------------------------------------------------------------------
 
-"""This module contains the Vec2d class that is used in all of pymunk when a 
+
+import operator
+import math
+
+
+"""
+This module contains the Vec2d class that is used in all of pymunk when a
 vector is needed.
 
-The Vec2d class is used almost everywhere in pymunk for 2d coordinates and 
-vectors, for example to define gravity vector in a space. However, pymunk is 
-smart enough to convert tuples or tuple like objects to Vec2ds so you usually 
-do not need to explicitly do conversions if you happen to have a tuple::
+The Vec2d class is used almost everywhere in pymunk for 2d coordinates and
+vectors, for example to define gravity vector in a space. However, pymunk is
+smart enough to convert tuples or tuple like objects to Vec2ds so you usually
+do not need to explicitly do conversions if you happen to have a tuple.
 
 	>>> import pymunk
 	>>> space = pymunk.Space()
@@ -40,7 +46,7 @@ do not need to explicitly do conversions if you happen to have a tuple::
 	>>> space.gravity
 	Vec2d(5.0, 11.0)
 
-More examples::
+More examples:
 
 	>>> from pymunk.vec2d import Vec2d
 	>>> Vec2d(7.3, 4.2)
@@ -49,32 +55,31 @@ More examples::
 	Vec2d(7.3, 4.2)
 	>>> Vec2d(7.3, 4.2) + Vec2d((1,2))
 	Vec2d(8.3, 6.2)
-
 """
+
+
 __docformat__ = "reStructuredText"
-
-import operator
-import math
-
 __all__ = ["Vec2d"]
 
+
 class Vec2d(object):
-	"""2d vector class, supports vector and scalar operators, and also 
+	"""
+	2d vector class, supports vector and scalar operators, and also
 	provides some high level functions.
 	"""
 	__slots__ = ("x", "y")
 
-	@staticmethod		
+	@staticmethod
 	def _fromcffi(p):
 		"""Used as a speedy way to create Vec2ds internally in pymunk."""
 		v = Vec2d.__new__(Vec2d)
 		v.x = p.x
 		v.y = p.y
-		return v 
+		return v
 
-	def __init__(self, x_or_pair=None, y = None):
-		if x_or_pair != None:
-			if y == None:
+	def __init__(self, x_or_pair=None, y=None):
+		if x_or_pair is not None:
+			if y is None:
 				if hasattr(x_or_pair, "x") and hasattr(x_or_pair, "y"):
 					self.x = x_or_pair.x
 					self.y = x_or_pair.y
@@ -211,11 +216,11 @@ class Vec2d(object):
 	# Multiplication
 	def __mul__(self, other):
 		if isinstance(other, Vec2d):
-			return Vec2d(self.x*other.x, self.y*other.y)
+			return Vec2d(self.x * other.x, self.y * other.y)
 		if (hasattr(other, "__getitem__")):
-			return Vec2d(self.x*other[0], self.y*other[1])
+			return Vec2d(self.x * other[0], self.y * other[1])
 		else:
-			return Vec2d(self.x*other, self.y*other)
+			return Vec2d(self.x * other, self.y * other)
 	__rmul__ = __mul__
 
 	def __imul__(self, other):
@@ -320,48 +325,50 @@ class Vec2d(object):
 		return Vec2d(-self.x, -self.y)
 
 	# vectory functions
-	def get_length_sqrd(self): 
-		"""Get the squared length of the vector.
-		It is more efficient to use this method instead of first call 
-		get_length() or access .length and then do a sqrt().
+	def get_length_sqrd(self):
+		"""
+		Get the squared length of the vector.
+		It is more efficient to use this method instead of calling get_length()
+		or access .length and then doing an sqrt().
 
 		:return: The squared length
 		"""
-		return self.x**2 + self.y**2
+		return self.x ** 2 + self.y ** 2
 
 	def get_length(self):
-		"""Get the length of the vector.
+		"""
+		Get the length of the vector.
 
 		:return: The length
 		"""
-		return math.sqrt(self.x**2 + self.y**2)	
+		return math.sqrt(self.x ** 2 + self.y ** 2)
 
 	def __setlength(self, value):
 		length = self.get_length()
-		self.x *= value/length
-		self.y *= value/length
-	length = property(get_length, __setlength, 
-		doc = """Gets or sets the magnitude of the vector""")
+		self.x *= value / length
+		self.y *= value / length
+
+	length = property(get_length, __setlength, doc="""Gets or sets the magnitude of the vector""")
 
 	def rotate(self, angle_radians):
 		"""Rotate the vector by angle_radians radians."""
 		cos = math.cos(angle_radians)
 		sin = math.sin(angle_radians)
-		x = self.x*cos - self.y*sin
-		y = self.x*sin + self.y*cos
+		x = self.x * cos - self.y * sin
+		y = self.x * sin + self.y * cos
 		self.x = x
 		self.y = y
 
 	def rotated(self, angle_radians):
-		"""Create and return a new vector by rotating this vector by 
-		angle_radians radians.
+		"""
+		Create and return a new vector by rotating this vector by angle_radians radians.
 
 		:return: Rotated vector
 		"""
 		cos = math.cos(angle_radians)
 		sin = math.sin(angle_radians)
-		x = self.x*cos - self.y*sin
-		y = self.x*sin + self.y*cos
+		x = self.x * cos - self.y * sin
+		y = self.x * sin + self.y * cos
 		return Vec2d(x, y)
 
 	def rotate_degrees(self, angle_degrees):
@@ -369,8 +376,8 @@ class Vec2d(object):
 		self.rotate(math.radians(angle_degrees))
 
 	def rotated_degrees(self, angle_degrees):
-		"""Create and return a new vector by rotating this vector by 
-		angle_degrees degrees.
+		"""
+		Create and return a new vector by rotating this vector by angle_degrees degrees.
 
 		:return: Rotated vector
 		"""
@@ -394,37 +401,45 @@ class Vec2d(object):
 	def __set_angle_degrees(self, angle_degrees):
 		self.__setangle(math.radians(angle_degrees))
 
-	angle_degrees = property(get_angle_degrees, __set_angle_degrees, doc="""Gets or sets the angle (in degrees) of a vector""")
+	angle_degrees = property(
+		get_angle_degrees,
+		__set_angle_degrees,
+		doc="""Gets or sets the angle (in degrees) of a vector"""
+	)
 
 	def get_angle_between(self, other):
-		"""Get the angle between the vector and the other in radians
+		"""
+		Get the angle between the vector and the other in radians.
 
 		:return: The angle
 		"""
-		cross = self.x*other[1] - self.y*other[0]
-		dot = self.x*other[0] + self.y*other[1]
+		cross = self.x * other[1] - self.y * other[0]
+		dot = self.x * other[0] + self.y * other[1]
 		return math.atan2(cross, dot)
 
 	def get_angle_degrees_between(self, other):
-		"""Get the angle between the vector and the other in degrees
+		"""
+		Get the angle between the vector and the other in degrees.
 
 		:return: The angle (in degrees)
 		"""
 		return math.degrees(self.get_angle_between(other))
 
 	def normalized(self):
-		"""Get a normalized copy of the vector
+		"""
+		Get a normalized copy of the vector.
 		Note: This function will return 0 if the length of the vector is 0.
 
 		:return: A normalized vector
 		"""
 		length = self.length
 		if length != 0:
-			return self/length
+			return self / length
 		return Vec2d(self)
 
 	def normalize_return_length(self):
-		"""Normalize the vector and return its length before the normalization
+		"""
+		Normalize the vector and return its length before the normalization.
 
 		:return: The length before the normalization
 		"""
@@ -440,52 +455,55 @@ class Vec2d(object):
 	def perpendicular_normal(self):
 		length = self.length
 		if length != 0:
-			return Vec2d(-self.y/length, self.x/length)
+			return Vec2d(-self.y / length, self.x / length)
 		return Vec2d(self)
 
 	def dot(self, other):
-		"""The dot product between the vector and other vector
-			v1.dot(v2) -> v1.x*v2.x + v1.y*v2.y
+		"""
+		The dot product between the vector and other vector.
+		v1.dot(v2) -> v1.x*v2.x + v1.y*v2.y
 
 		:return: The dot product
 		"""
-		return float(self.x*other[0] + self.y*other[1])
+		return float(self.x * other[0] + self.y * other[1])
 
 	def get_distance(self, other):
-		"""The distance between the vector and other vector
+		"""
+		The distance between the vector and other vector.
 
 		:return: The distance
 		"""
-		return math.sqrt((self.x - other[0])**2 + (self.y - other[1])**2)
+		return math.sqrt((self.x - other[0]) ** 2 + (self.y - other[1]) ** 2)
 
 	def get_dist_sqrd(self, other):
-		"""The squared distance between the vector and other vector
-		It is more efficient to use this method than to call get_distance()
-		first and then do a sqrt() on the result.
+		"""
+		The squared distance between the vector and other vector.
+		It is more efficient to use this method than to call get_distance() and then do an sqrt() on the result.
 
 		:return: The squared distance
 		"""
-		return (self.x - other[0])**2 + (self.y - other[1])**2
+		return (self.x - other[0]) ** 2 + (self.y - other[1]) ** 2
 
 	def projection(self, other):
-		other_length_sqrd = other[0]*other[0] + other[1]*other[1]
+		other_length_sqrd = other[0] * other[0] + other[1] * other[1]
 		projected_length_times_other_length = self.dot(other)
-		return other*(projected_length_times_other_length/other_length_sqrd)
+		return other * (projected_length_times_other_length / other_length_sqrd)
 
 	def cross(self, other):
-		"""The cross product between the vector and other vector
-			v1.cross(v2) -> v1.x*v2.y - v2.y*v1.x
+		"""
+		The cross product between the vector and other vector.
+		v1.cross(v2) -> v1.x*v2.y - v2.y*v1.x
 
 		:return: The cross product
 		"""
-		return self.x*other[1] - self.y*other[0]
+		return self.x * other[1] - self.y * other[0]
 
 	def interpolate_to(self, other, range):
-		return Vec2d(self.x + (other[0] - self.x)*range, self.y + (other[1] - self.y)*range)
+		return Vec2d(self.x + (other[0] - self.x) * range, self.y + (other[1] - self.y) * range)
 
 	def convert_to_basis(self, x_vector, y_vector):
-		x = self.dot(x_vector)/x_vector.get_length_sqrd()
-		y = self.dot(y_vector)/y_vector.get_length_sqrd()
+		x = self.dot(x_vector) / x_vector.get_length_sqrd()
+		y = self.dot(y_vector) / y_vector.get_length_sqrd()
 		return Vec2d(x, y)
 
 	def __get_int_xy(self):
@@ -511,11 +529,11 @@ class Vec2d(object):
 	# Extra functions, mainly for chipmunk
 	def cpvrotate(self, other):
 		"""Uses complex multiplication to rotate this vector by the other. """
-		return Vec2d(self.x*other.x - self.y*other.y, self.x*other.y + self.y*other.x)
+		return Vec2d(self.x * other.x - self.y * other.y, self.x * other.y + self.y * other.x)
 
 	def cpvunrotate(self, other):
 		"""The inverse of cpvrotate"""
-		return Vec2d(self.x*other.x + self.y*other.y, self.y*other.x - self.x*other.y)
+		return Vec2d(self.x * other.x + self.y * other.y, self.y * other.x - self.x * other.y)
 
 	# Pickle
 	def __reduce__(self):

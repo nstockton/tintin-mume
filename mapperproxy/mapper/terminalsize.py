@@ -1,7 +1,6 @@
 # This module adapted from:
 # https://gist.github.com/1108174.git
 
-from __future__ import print_function
 
 import os
 import platform
@@ -17,11 +16,11 @@ if OS_NAME == "Windows":
 else:
 	try:
 		import fcntl
-	except ImportError as e:
+	except ImportError:
 		fcntl = None
 	try:
 		import termios
-	except ImportError as e:
+	except ImportError:
 		termios = None
 
 
@@ -57,9 +56,10 @@ def _get_terminal_size_windows():
 	csbi = ctypes.create_string_buffer(22)
 	res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 	if res:
-		(bufx, bufy, curx, cury, wattr,\
-			left, top, right, bottom,\
-			maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+		(bufx, bufy, curx, cury, wattr, left, top, right, bottom, maxx, maxy) = struct.unpack(
+			"hhhhHhhhhhh",
+			csbi.raw
+		)
 		sizex = right - left + 1
 		sizey = bottom - top + 1
 		return sizex, sizey
@@ -73,7 +73,7 @@ def _get_terminal_size_tput():
 		cols = int(subprocess.check_output(shlex.split('tput cols')))
 		rows = int(subprocess.check_output(shlex.split('tput lines')))
 		return (cols, rows)
-	except:
+	except Exception:
 		return None
 
 
@@ -81,7 +81,7 @@ def ioctl_GWINSZ(fd):
 	if fcntl and termios:
 		try:
 			return struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, "1234"))
-		except:
+		except Exception:
 			return None
 
 
@@ -92,12 +92,12 @@ def _get_terminal_size_linux():
 			fd = os.open(os.ctermid(), os.O_RDONLY)
 			cr = ioctl_GWINSZ(fd)
 			os.close(fd)
-		except:
+		except Exception:
 			pass
 	if not cr:
 		try:
 			cr = (os.environ['LINES'], os.environ['COLUMNS'])
-		except:
+		except Exception:
 			return None
 	return int(cr[1]), int(cr[0])
 

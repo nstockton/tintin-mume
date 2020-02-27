@@ -2,9 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+
 import codecs
 import json
 import os.path
+
+try:
+	import rapidjson
+except ImportError:
+	rapidjson = None
 
 from ..utils import getDirectoryPath
 
@@ -36,6 +42,7 @@ def _load(filePath):
 	else:
 		return "Error: '{0}' doesn't exist.".format(filePath), None
 
+
 def loadLabels():
 	errorMessages = []
 	labels = {}
@@ -57,9 +64,11 @@ def loadLabels():
 	else:
 		return None, labels
 
+
 def dumpLabels(labels):
 	with codecs.open(LABELS_FILE_PATH, "wb", encoding="utf-8") as fileObj:
 		json.dump(labels, fileObj, sort_keys=True, indent=2, separators=(",", ": "))
+
 
 def loadRooms():
 	errorMessages = []
@@ -71,11 +80,17 @@ def loadRooms():
 	errors, result = _load(SAMPLE_MAP_FILE_PATH)
 	if result is None:
 		errorMessages.append(errors)
-		errorMessages.append("Error: neither '{}' nor '{}' can be found.".format(MAP_FILE_PATH, SAMPLE_MAP_FILE_PATH))
+		errorMessages.append(
+			"Error: neither '{}' nor '{}' can be found.".format(MAP_FILE_PATH, SAMPLE_MAP_FILE_PATH)
+		)
 		return "\n".join(errorMessages), None
 	else:
 		return None, result
 
+
 def dumpRooms(rooms):
 	with codecs.open(MAP_FILE_PATH, "wb", encoding="utf-8") as fileObj:
-		fileObj.write(json.dumps(rooms, sort_keys=True, indent=2, separators=(",", ": ")))
+		if rapidjson is not None:
+			rapidjson.dump(rooms, fileObj, sort_keys=True, indent=2, chunk_size=2**16)
+		else:
+			fileObj.write(json.dumps(rooms, sort_keys=True, indent=2))

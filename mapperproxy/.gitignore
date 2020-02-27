@@ -28,6 +28,8 @@ var/
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# Except my spec file.
+!pyinstaller_windows.spec
 
 # Installer logs
 pip-log.txt
@@ -57,6 +59,7 @@ docs/_build/
 target/
 
 # Misc
-python34.dll
-Mapper Proxy V*/
-Mapper Proxy V*.zip
+mpm_version.py
+*.ignore
+Mapper_Proxy_V*/
+Mapper_Proxy_V*.zip*

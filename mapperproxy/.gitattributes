@@ -1,0 +1,15 @@
+* text=auto
+.gitattributes text eol=crlf
+.gitignore text eol=crlf
+.flake8 text eol=crlf
+*.txt text eol=crlf
+*.py text eol=crlf
+*.pyw text eol=crlf
+*.pys text eol=crlf
+*.md text eol=crlf
+*.spec text eol=crlf
+*.json.sample text eol=lf
+data/config.json.sample text eol=crlf
+*.jpg -text
+*.png -text
+*.xcf -text
