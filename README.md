@@ -29,9 +29,19 @@ pip install -U -r requirements.txt
 ### Manual start up
 To start the mapper, run `python start.py` from the _mume-mapperproxy/_ directory. It accepts the following arguments:
 
-- `-e` Start in emulation mode. The mapper does not connect to MUME.
-- `-i [text|hc|sighted]` Select an interface. Text-only mode, high contrast GUI, or sighted GUI. The high contrast GUI is a high contrast one for visually impaired players. The sighted GUI uses png tiles. Default is text-only mode (no GUI).
-- `-f [normal|tintin|raw]` Select how the data from the server is transformed before being sent to the client. Normal mode filters out XML tags from the data received by the mud before sending it to the user's mud client, TinTin sends certain tags to the client in a special format for the mud client to trigger on, and raw sends the data from the mud to the mud client unmodified. Default is "_normal_".
+- `-h`, `--help` Show program's help and exit.
+- `-v`, `--version` Show program's version number and exit.
+- `-e`, `--emulation` Start in emulation mode. The mapper will not connect to MUME.
+- `-i [text|hc|sighted]`, `--interface [text|hc|sighted]` Select an interface. Text-only mode, high contrast GUI, or sighted GUI. The high contrast GUI is a high contrast one for visually impaired players. The sighted GUI uses png tiles. Default is "_text_" mode (no GUI).
+- `-f [normal|tintin|raw]`, `--format [normal|tintin|raw]` Select how the data from the server is transformed before being sent to the client. Normal mode filters out XML tags from the data received by the mud before sending it to the user's mud client, TinTin sends certain tags to the client in a special format for the mud client to trigger on, and raw sends the data from the mud to the mud client unmodified. Default is "_normal_".
+- `-lh address`, `--local-host address` The local host address to bind to. Default is "_127.0.0.1_".
+- `-lp port`, `--local-port port` The local port to bind to. Default is "_4000_".
+- `-rh address`, `--remote-host address` The remote host address to connect to. Default is "_mume.org_".
+- `-rp port`, `--remote-port port` The remote port to connect to. Default is "_4242_".
+- `-nssl`, `--no-ssl` Disable encrypted communication between the local and remote hosts. Don't do this unless you know what you're doing.
+- `-ptlf`, `--prompt-terminator-lf` Terminate game prompts with new line characters (IAC + GA is default).
+- `-gp`, `--gag-prompts` gag emulated prompts.
+- `-ff FormatString`, `--find-format FormatString` The format string for controlling output of the find commands. Accepts the following placeholders in braces: `{attribute}`, `{direction}`, `{clockPosition}`, `{distance}`, `{name}`, `{vnum}`. Where `{attribute}` represents the attribute on which the search is performed. The default is `"{vnum}, {name}, {attribute}"`.
 
 Once done, connect your client to `127.0.0.1`, port `4000`.
 
@@ -93,9 +103,14 @@ Auto mapping mode must be on for these commands to have any effect.
 * secretaction [action] [north|east|south|west|up|down]  --  Perform an action on a secret door in a given direction. This command is meant to be called from an alias. For example, secretaction open east.
 
 ### Miscellaneous Mapper Commands
+* clock [action]  --  If no action is given, print the output from the mapper's clock. If the action is 'pull', send the appropriate commands to the game for opening the exit in mystical. If any other action is given, send a line with the current game time to the game, prefixed by the action. Example: `clock narrate` to narrate the current game time.
+* emu [command]  --  If not in emulation mode (I.E. connected to the game), execute an emulation command.
 * getlabel [vnum]  --  Returns the label or labels defined for the room with vnum. If no vnum is supplied, the current room's vnum is used.
 * gettimer  --  Returns the amount of seconds since the mapper was started in an optimal format for triggering. This is to assist scripters who use clients with no time stamp support such as VIP Mud.
 * gettimerms  --  Returns the amount of milliseconds since the mapper was started in an optimal format for triggering. This is to assist scripters who use clients with no time stamp support such as VIP Mud.
+* help  --  If in emulation mode, print a summery of the available emulation commands.
+* maphelp  --  Print a summery of the available mapper commands.
+* rinfo [vnum|label]  --  Print info about the room with vnum or label. If no vnum or label is given, use current room.
 * rinfo [vnum|label]  --  Print info about the room with vnum or label. If no vnum or label is given, use current room.
 * sync [vnum|label]  --  Manually sync the map to the room with vnum or label. If no vnum or label is given, mapper will be placed in an unsynced state, and will try to automatically sync to the current room.
 * tvnum  --  Tell the vnum of the current room to another player.

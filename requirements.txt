@@ -1,1 +1,11 @@
-git+https://github.com/nstockton/speechlight.git
+certifi
+flake8
+flake8-tabs
+fuzzywuzzy
+pyglet
+python-Levenshtein
+python-rapidjson
+#git+https://github.com/nstockton/speechlight.git
+https://github.com/nstockton/speechlight/archive/master.zip
+# For Python3.8, the development version of PyInstaller is required to build.
+#https://github.com/pyinstaller/pyinstaller/archive/develop.zip

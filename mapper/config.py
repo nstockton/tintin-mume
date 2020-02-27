@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+
 # Built-in Modules:
 import codecs
 import collections
@@ -12,8 +13,13 @@ import threading
 # Local Modules:
 from .utils import getDirectoryPath
 
+
+config_lock = threading.RLock()
+
+
 class Error(Exception):
 	pass
+
 
 class Config(collections.MutableMapping):
 	def __init__(self, name="config", *args, **kwargs):
@@ -30,20 +36,20 @@ class Config(collections.MutableMapping):
 	def name(self, value):
 		self._name = value
 
-	def _parse(self, file_name):
+	def _parse(self, filename):
 		data_directory = getDirectoryPath("data")
-		file_name = os.path.join(data_directory, file_name)
-		if os.path.exists(file_name):
-			if not os.path.isdir(file_name):
+		filename = os.path.join(data_directory, filename)
+		if os.path.exists(filename):
+			if not os.path.isdir(filename):
 				try:
-					with codecs.open(file_name, "rb", encoding="utf-8") as file_object:
-						return json.load(file_object)
+					with codecs.open(filename, "rb", encoding="utf-8") as fileObj:
+						return json.load(fileObj)
 				except IOError as e:
 					raise Error("{}: '{}'".format(e.strerror, e.filename))
 				except ValueError:
-					raise Error("Corrupted json file: {}".format(file_name))
+					raise Error("Corrupted json file: {}".format(filename))
 			else:
-				raise Error("'{}' is a directory, not a file.".format(file_name))
+				raise Error("'{}' is a directory, not a file.".format(filename))
 		else:
 			return {}
 
@@ -54,9 +60,16 @@ class Config(collections.MutableMapping):
 
 	def save(self):
 		data_directory = getDirectoryPath("data")
-		file_name = os.path.join(data_directory, "{}.json".format(self._name))
-		with codecs.open(file_name, "wb", encoding="utf-8") as file_object:
-			json.dump(self._config, file_object, sort_keys=True, indent=2, separators=(",", ": "))
+		filename = os.path.join(data_directory, "{}.json".format(self._name))
+		with codecs.open(filename, "wb", encoding="utf-8") as fileObj:
+			# Configuration should be stored using Windows style line endings (\r\n)
+			# so the file can be viewed in Notepad.
+			# However, codecs.open forces opening files in binary mode, which
+			# prevents the use of the newline flag to force a particular delimiter for new lines.
+			# The json data must therefore be modified to replace Unix line endings
+			# with Windows line endings before it is written.
+			data = json.dumps(self._config, sort_keys=True, indent=2)
+			fileObj.write(data.replace("\n", "\r\n"))
 
 	def __getitem__(self, key):
 		return self._config[key]
@@ -72,5 +85,3 @@ class Config(collections.MutableMapping):
 
 	def __len__(self):
 		return len(self._config)
-
-config_lock = threading.Lock()

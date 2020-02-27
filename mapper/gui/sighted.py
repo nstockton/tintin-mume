@@ -1,25 +1,26 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-###Some code borrowed from pymunk's debug drawing functions###
+
+# Some code borrowed from pymunk's debug drawing functions.
+
 
 import logging
-import pyglet
 import os.path
 from re import search
-pyglet.options['debug_gl'] = False
 try:
 	from Queue import Empty as QueueEmpty
 except ImportError:
 	from queue import Empty as QueueEmpty
 
-from ..config import Config, config_lock
-from ..utils import iterItems, getDirectoryPath
+import pyglet
+
+from ..utils import getDirectoryPath
 
 
+pyglet.options['debug_gl'] = False
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
-#logger.setLevel('INFO')
 
 FPS = 40
 
@@ -48,7 +49,7 @@ TILES = {
 	"wallnorth": pyglet.image.load(os.path.join(TILESDIR, "wallnorth.png")),
 	"walleast": pyglet.image.load(os.path.join(TILESDIR, "walleast.png")),
 	"wallsouth": pyglet.image.load(os.path.join(TILESDIR, "wallsouth.png")),
-	"wallwest": pyglet.image.load(os.path.join(TILESDIR, "wallwest.png")), 
+	"wallwest": pyglet.image.load(os.path.join(TILESDIR, "wallwest.png")),
 	"exitup": pyglet.image.load(os.path.join(TILESDIR, "exitup.png")),
 	"exitdown": pyglet.image.load(os.path.join(TILESDIR, "exitdown.png")),
 	# load flags
@@ -68,52 +69,49 @@ TILES = {
 	"player": pyglet.image.load(os.path.join(TILESDIR, "player.png"))
 }
 
+
 class Window(pyglet.window.Window):
 	def __init__(self, world):
-
-		# mapperproxy world
+		# Mapperproxy world
 		self.world = world
-
-		### map variables
-		# number of columns
-		self.col=9
-		# number of rows
-		self.row=23
-		# the center of the window
-		self.mcol = int(self.col/2)
-		self.mrow = int(self.row/2)
+		# Map variables
+		# Number of columns
+		self.col = 9
+		# Number of rows
+		self.row = 23
+		# The center of the window
+		self.mcol = int(self.col / 2)
+		self.mrow = int(self.row / 2)
 		self.radius = (self.mcol, self.mrow, 1)
-		# the size of a tile in pixel
-		self.square=32
-		# the list of visible rooms:
-		# a dictionary using a tuple of coordinates (x, y) as keys
+		# The size of a tile in pixel
+		self.square = 32
+		# The list of visible rooms:
+		# A dictionary using a tuple of coordinates (x, y) as keys
 		self.visibleRooms = {}
-		# player position and central rooms
-		# they are set to None at startup
+		# Player position and central rooms
+		# They are set to None at startup.
 		self.playerRoom = None
 		self.centerRoom = None
-
-		### pyglet window
+		# Pyglet window
 		super(Window, self).__init__(
-			self.col*self.square, self.row*self.square,
-			caption='MPM', resizable=True)
+			self.col * self.square, self.row * self.square,
+			caption="MPM", resizable=True
+		)
 		logger.info("Creating window {}".format(self))
 		self._gui_queue = world._gui_queue
 		self._gui_queue_lock = world._gui_queue_lock
-
-		### sprites
-		# the list of sprites
+		# Sprites
+		# The list of sprites
 		self.sprites = []
-		# pyglet batch of sprites
+		# Pyglet batch of sprites
 		self.batch = pyglet.graphics.Batch()
-		# the list of visible layers (level 0 is covered by level 1)
+		# The list of visible layers (level 0 is covered by level 1)
 		self.layer = []
 		self.layer.append(pyglet.graphics.OrderedGroup(0))
 		self.layer.append(pyglet.graphics.OrderedGroup(1))
 		self.layer.append(pyglet.graphics.OrderedGroup(2))
 		self.layer.append(pyglet.graphics.OrderedGroup(3))
-
-		### Define FPS
+		# Define FPS
 		pyglet.clock.schedule_interval_soft(self.queue_observer, 1.0 / FPS)
 
 	def queue_observer(self, dt):
@@ -142,10 +140,10 @@ class Window(pyglet.window.Window):
 		logger.debug("Resizing window {}".format(self))
 		super(Window, self).on_resize(width, height)
 		# reset window size
-		self.col = int(width/self.square)
-		self.mcol = int(self.col/2)
-		self.row = int(height/self.square)
-		self.mrow = int(self.row/2)
+		self.col = int(width / self.square)
+		self.mcol = int(self.col / 2)
+		self.row = int(height / self.square)
+		self.mrow = int(self.row / 2)
 		self.radius = (self.mcol, self.mrow, 1)
 		if self.centerRoom is not None:
 			self.draw_map(self.centerRoom)
@@ -157,7 +155,8 @@ class Window(pyglet.window.Window):
 		self.draw_map(currentRoom)
 
 	def on_gui_refresh(self):
-		'''This event is fired when the mapper needs to signal the GUI to clear the visible rooms cache and redraw the map view.'''
+		'''This event is fired when the mapper needs to signal the GUI to clear
+		the visible rooms cache and redraw the map view.'''
 		if self.centerRoom is not None:
 			self.draw_map(self.centerRoom)
 			logger.debug('GUI refreshed.')
@@ -172,9 +171,7 @@ class Window(pyglet.window.Window):
 		self.centerRoom = centerRoom
 		# draw the rooms, beginning by the central one
 		self.draw_room(self.mcol, self.mrow, centerRoom)
-		for vnum, room, x, y, z in self.world.getNeighborsFromRoom(
-				start=centerRoom, radius=self.radius
-				):
+		for vnum, room, x, y, z in self.world.getNeighborsFromRoom(start=centerRoom, radius=self.radius):
 			if z == 0:
 				self.draw_room(self.mcol + x, self.mrow + y, room)
 		self.draw_player()
@@ -209,9 +206,8 @@ class Window(pyglet.window.Window):
 				self.draw_tile(x, y, 2, 'guild')
 				break
 
-
 	def draw_player(self):
-		if self.playerRoom == None or self.centerRoom == None:
+		if self.playerRoom is None or self.centerRoom is None:
 		    return
 		logger.debug("Drawing player on room vnum {}".format(self.playerRoom.vnum))
 		# transform map coordinates to window ones
