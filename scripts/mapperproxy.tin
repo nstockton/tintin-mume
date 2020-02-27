@@ -1,4 +1,4 @@
-#run {mapper} {python -B}
+#run {mapper} {python3 -B}
 
 from mapperproxy.mapper.main import main
 
@@ -6,4 +6,4 @@ from mapperproxy.mapper.main import main
 
 #gts
 
-#mapper main(outputFormat="tintin", interface="text")
+#mapper main(outputFormat="tintin", interface="text", isEmulatingOffline=False, promptTerminator=None, gagPrompts=False, findFormat="{vnum}, {name}, {attribute}", localHost="127.0.0.1", localPort=4000, remoteHost="mume.org", remotePort=4242, noSsl=False)
