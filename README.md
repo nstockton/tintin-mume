@@ -1,6 +1,12 @@
 # TinTin-MUME
 A collection of TinTin++ scripts for [MUME](http://mume.org "MUME Home Page")
 
+This project is no longer being maintained.
+
+I created this project back in 2014 in order to give some blind, Linux-only friends of mine a set of scripts to play MUME with. My goal was to try to port my MushClient scripts from Lua to TinTin script, and hopefully reach a point where I'd have 2 client setups in feature parity with each other. Despite TinTin script being less than optimal for advanced scripting when compared to Lua, I think I succeeded for a while. After a couple years playing MUME, my friends moved onto other games, and this project quickly stagnated while I focused my time on developing the mapper and MushClient scripts.
+
+At this point in time, I am no longer motivated to work on this project. It will remain archived here, in case it is useful to someone. If you are a blind Windows user, please go [here](https://github.com/nstockton/mushclient-mume "mushclient-mume on GitHub") for my MushClient scripts.
+
 ## Installation
 These scripts require Python (either version 2 or 3), and the latest beta version of TinTin. You can download the current TinTin Beta version from [here](http://tintin.sf.net/download/tintin-beta.tar.gz "TinTin Beta Version Direct Link").
 
